@@ -10,23 +10,93 @@ from flask_cors import *
 import camera_opencv
 from camera_opencv import Camera
 import threading
+import time
 
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
-camera = Camera()
 
-def gen(camera):
-    """Video streaming generator function."""
+# La telecamera NON deve bloccare l'avvio del pannello: il suo flat è
+# tollerante e a volte la pipeline va in timeout per minuti.
+# Viene quindi aperta in un thread; fino a quando non è pronta (o se
+# fallisce) lo stream serve un fotogramma segnaposto.
+camera = None
+_camera_lock = threading.Lock()
+RETRY_SECONDS = 15      # ogni quanto ritentare se la camera non parte
+
+
+def _camera_worker():
+    """Apre la camera; se fallisce riprova ogni RETRY_SECONDS.
+    Il pannello resta sempre disponibile: prima o poi il flat fa contatto."""
+    global camera
     while True:
-        frame = camera.get_frame()
+        with _camera_lock:
+            already = camera is not None
+        if already:
+            time.sleep(10)
+            continue
+        try:
+            c = Camera()
+            with _camera_lock:
+                camera = c
+            print("camera: pronta", flush=True)
+        except Exception as e:
+            print("camera: non disponibile (%s) — riprovo fra %ds"
+                  % (e, RETRY_SECONDS), flush=True)
+            time.sleep(RETRY_SECONDS)
+
+
+threading.Thread(target=_camera_worker, daemon=True).start()
+
+
+def _placeholder_frame():
+    try:
+        from PIL import Image, ImageDraw
+        import io
+        img = Image.new("RGB", (640, 480), (10, 12, 18))
+        d = ImageDraw.Draw(img)
+        d.text((30, 215), "CAMERA OFFLINE", fill=(255, 179, 71))
+        d.text((30, 240), "in attesa del flat CSI...", fill=(120, 130, 150))
+        buf = io.BytesIO()
+        img.save(buf, "JPEG", quality=70)
+        return buf.getvalue()
+    except Exception:
+        return b""
+
+
+PLACEHOLDER = _placeholder_frame()
+
+
+def gen(_camera=None):
+    """Video streaming generator function."""
+    global camera
+    errors = 0
+    while True:
+        with _camera_lock:
+            cam = camera
+        if cam is None:
+            frame = PLACEHOLDER
+            time.sleep(0.5)
+        else:
+            try:
+                frame = cam.get_frame()
+                errors = 0
+            except Exception:
+                errors += 1
+                frame = PLACEHOLDER
+                # dopo 20 errori consecutivi considero la camera caduta
+                # e lascio che il worker la riapra
+                if errors >= 20:
+                    with _camera_lock:
+                        camera = None
+                    errors = 0
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 @app.route('/video_feed')
 def video_feed():
     """Video streaming route. Put this in the src attribute of an img tag."""
-    return Response(gen(camera),
+    return Response(gen(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 dir_path = os.path.dirname(os.path.realpath(__file__))

@@ -1,0 +1,36 @@
+# ── Python ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+
+# ── Ambienti virtuali ───────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Backup e file temporanei ────────────────────────────
+*.bak
+*.bak-*
+*.orig
+*.rej
+*.swp
+*.swo
+*~
+
+# ── Log ─────────────────────────────────────────────────
+*.log
+
+# ── Sistema / editor ────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+
+# NOTA: Server/dist/ NON va ignorata — è la web UI compilata,
+# serve al pannello di controllo ed è versionata di proposito.

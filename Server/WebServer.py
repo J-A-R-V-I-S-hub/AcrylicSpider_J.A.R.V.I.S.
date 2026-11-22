@@ -430,6 +430,18 @@ if __name__ == '__main__':
         ws2812.led_close()
         pass
 
+    try:
+        import wakeup
+        wakeup.run(ws2812)
+    except Exception as e:
+        print("wakeup error:", e)
+
+    try:
+        import hourly
+        hourly.start(ws2812)
+    except Exception as e:
+        print("hourly start error:", e)
+
     while  1:
         try:                  #Start server,waiting for client
             start_server = websockets.serve(main_logic, '0.0.0.0', 8888)

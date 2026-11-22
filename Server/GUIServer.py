@@ -25,7 +25,7 @@ speed_set = 100
 new_frame = 0
 direction_command = 'no'
 turn_command = 'no'
-pwm = Adafruit_PCA9685.PCA9685(address=0x5F, busnum=1)
+pwm = Adafruit_PCA9685.PCA9685(address=0x40, busnum=1)
 pwm.set_pwm_freq(50)
 batteryMonitor = Voltage.BatteryLevelMonitor()
 batteryMonitor.start()

@@ -41,21 +41,37 @@ def gpio_kernel_busy(gpio):
 
 def create_led(gpio):
     if gpio_kernel_busy(gpio):
-        print(f"GPIO{gpio} is occupied by kernel/SPI, LED disabled")
+        print("GPIO%d is occupied by kernel/SPI, LED disabled" % gpio, flush=True)
         return None
     try:
         led = LED(gpio)
         return led
     except Exception as e:
-        pass
+        # prima era silenzioso: senza questo log è impossibile capire
+        # perché una luce non si accende
+        print("GPIO%d: LED non disponibile (%s: %s)" % (gpio, type(e).__name__, e), flush=True)
+        return None
+
+_ready = False
+
 
 def switchSetup():
-    global led1, led2, led3
-    led1 = create_led(9)
-    led2 = create_led(25)
-    led3 = create_led(11)
+    global led1, led2, led3, _ready
+    # Idempotente: se i LED esistono già, non ricrearli. Una seconda creazione
+    # solleva GPIOPinInUse e lascerebbe i pin morti.
+    if _ready:
+        return
+    led1 = create_led(5)
+    led2 = create_led(6)
+    led3 = create_led(13)
+    _ready = True
+
 
 def switch(port, status):
+    # Inizializzazione pigra: garantisce che i LED esistano anche se il
+    # chiamante (es. WebServer) non ha invocato switchSetup().
+    if not _ready:
+        switchSetup()
     if port == 1:
         if led1 is None:
             return

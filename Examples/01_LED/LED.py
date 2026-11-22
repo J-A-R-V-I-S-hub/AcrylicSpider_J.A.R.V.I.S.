@@ -9,9 +9,9 @@ from gpiozero import LED
 
 def switchSetup():
     global led1,led2,led3
-    led1 = LED(9)
-    led2 = LED(25)
-    led3 = LED(11)
+    led1 = LED(5)
+    led2 = LED(6)
+    led3 = LED(13)
 
 def switch(port, status):
     if port == 1:

@@ -11,9 +11,9 @@ from gpiozero import LED
 # Initializes three LED objects corresponding to different GPIO pins.
 def switchSetup():
     global led1, led2, led3
-    led1 = LED(9)
-    led2 = LED(25)
-    led3 = LED(11)
+    led1 = LED(5)
+    led2 = LED(6)
+    led3 = LED(13)
 
 # Function to control the state of a specific LED.
 # port: The number of the LED (1, 2, or 3).

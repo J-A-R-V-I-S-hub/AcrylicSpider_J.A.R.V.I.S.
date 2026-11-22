@@ -11,7 +11,7 @@ from mpu6050 import mpu6050
 import PID
 import Kalman_Filter as Kalman_filter
 
-pwm = Adafruit_PCA9685.PCA9685(address=0x5F, busnum=1)
+pwm = Adafruit_PCA9685.PCA9685(address=0x40, busnum=1)
 pwm.set_pwm_freq(50)
 
 MPU_connection = 1

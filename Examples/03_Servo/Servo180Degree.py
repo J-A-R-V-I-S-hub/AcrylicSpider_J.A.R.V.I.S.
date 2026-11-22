@@ -9,7 +9,7 @@ import time
 import sys
 import Adafruit_PCA9685
 
-pwm = Adafruit_PCA9685.PCA9685(address=0x5F, busnum=1)
+pwm = Adafruit_PCA9685.PCA9685(address=0x40, busnum=1)
 pwm.set_pwm_freq(50)
 
 SERVO_90_DEGREE_PWM = 300
