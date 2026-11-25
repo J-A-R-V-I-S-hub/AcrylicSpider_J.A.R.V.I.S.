@@ -15,6 +15,7 @@
 #
 # Velocità: 3 unità PWM per passo, 2 ms (~7 ms reali: costa il bus I2C).
 
+import math
 import time
 import SpiderG
 
@@ -345,26 +346,57 @@ def battito(colpi=2, amp=30, hold=0.06):
     _reach(_neutral())
 
 
-def onda_lenta(amp=48, hold=0.38, pausa=0.06):
-    """Onda lenta: una zampa alla volta, in giro attorno al corpo.
+def onda_lenta(amp=52, periodi=2.0, durata=3.0, fps=20, ordine=None):
+    """Onda fluida: le quattro punte seguono una sinusoide sfasata.
 
-    Muove UN servo per volta, quindi la corrente di picco è minima: è la
-    mossa più "gentile" che abbiamo. Visivamente è un'onda che gira.
+    Non è una sequenza di scatti: ogni zampa è a un punto diverso della stessa
+    onda, quindi il movimento gira attorno al corpo in modo continuo — come
+    cerchio e torsione, ma sulle punte invece che sul corpo.
+
+    Una zampa alla volta è al massimo, quindi la corrente resta bassa.
     """
-    for nome in ('FLE', 'HLE', 'FRE', 'HRE'):
-        leg(nome, amp * PUNTA_SU[nome], hold=hold)
-        time.sleep(pausa)
+    ordine = ordine or ('FLE', 'HRE', 'FRE', 'HLE')
+    base = {n: current[n] for n in ordine}
+    fase = {n: i / float(len(ordine)) for i, n in enumerate(ordine)}
+    t0 = time.time()
+    passo = 1.0 / max(1, fps)
+
+    while True:
+        trascorso = time.time() - t0
+        if trascorso >= durata:
+            break
+        giro = (trascorso / durata) * periodi
+        for n in ordine:
+            valore = base[n] + amp * math.sin(2 * math.pi * (giro - fase[n]))
+            valore = max(100, min(500, int(valore)))
+            if valore != current[n]:
+                current[n] = valore
+                _write(n, valore)
+        time.sleep(passo)
+
+    _reach(base)
 
 
-def respiro(alto=88, basso=-28, hold=0.55):
-    """Respiro: il corpo sale lentamente, scende sotto il neutro, si riposa.
+def respiro(cicli=3, su=52, giu=-22, hold=0.40, passi=6, passo=0.09):
+    """Respiro naturale: sale piano, pausa, scende piano, pausa, ripete.
 
-    Usa solo i quattro servi centrali e si muove piano: niente picchi.
+    Non sono tre pose staccate: ogni salita e ogni discesa è una rampa di
+    piccoli passi, così il movimento è continuo e sembra davvero un respiro.
     """
-    pose(0, 0, 0, hold=0.08)
-    pose(alto, 0, 0, hold=hold)
-    pose(basso, 0, 0, hold=hold * 0.8)
-    pose(0, 0, 0, hold=0.1)
+    def rampa(da, a):
+        for i in range(1, passi + 1):
+            pose(da + (a - da) * i / float(passi), 0, 0)
+            time.sleep(passo)
+
+    attuale = 0.0
+    for _ in range(max(1, cicli)):
+        rampa(attuale, su)
+        attuale = su
+        time.sleep(hold)
+        rampa(attuale, giu)
+        attuale = giu
+        time.sleep(hold)
+    rampa(attuale, 0.0)
 
 
 def torsione(hold=0.30):
