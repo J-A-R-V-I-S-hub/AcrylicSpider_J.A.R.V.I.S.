@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#252423">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>J.A.R.V.I.S. — Control</title>
+<style>
+  :root{
+    /* palette anime.js: carbone caldo + bianco caldo + accenti acidi */
+    --bg:#252423;
+    --bg-2:#2c2a28;
+    --fg:#f6f4f2;
+    --fg-2:#cccac8;
+    --fg-3:#85827e;
+    --line:#3b3936;
+    --line-2:#4a4745;
+    --surface:#2c2a28;
+    --surface-2:#333130;
+
+    --red:#ff4b4b;
+    --corail:#ff7d36;
+    --orange:#ffa828;
+    --yellow:#ffcc2a;
+    --lime:#b7ff54;
+    --turquoise:#00ffaa;
+    --purple:#c06ddf;
+    --magenta:#e962bf;
+    --pink:#ff718b;
+
+    --accent:var(--yellow);
+    --font:"Helvetica Neue",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);color:var(--fg);overflow:hidden;
+    font-family:var(--mono);font-size:13px;
+    height:100vh;height:100dvh;display:flex;flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* griglia di punti, come la home di anime.js */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:radial-gradient(rgba(246,244,242,.085) 1px, transparent 1px);
+    background-size:22px 22px;
+    -webkit-mask-image:radial-gradient(ellipse at 50% 18%, #000 0%, transparent 78%);
+    mask-image:radial-gradient(ellipse at 50% 18%, #000 0%, transparent 78%);
+  }
+
+  /* ───────── header orizzontale ───────── */
+  .bar{
+    position:relative;z-index:3;flex:0 0 auto;
+    display:flex;align-items:center;gap:12px;
+    padding:9px 14px;padding-top:max(9px,env(safe-area-inset-top));
+    border-bottom:1px solid var(--line);
+    background:rgba(37,36,35,.86);
+    backdrop-filter:blur(14px);
+  }
+  .reattore{position:relative;width:26px;height:26px;flex:0 0 auto}
+  .anello{position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--accent)}
+  .anello:nth-child(2){inset:6px;border:1.5px dashed var(--line-2)}
+  .nucleo{position:absolute;inset:9px;border-radius:50%;background:var(--accent)}
+
+  .titolo{display:flex;flex-direction:column;line-height:1.05;min-width:0}
+  .titolo b{
+    font-family:var(--font);font-size:15px;font-weight:700;
+    letter-spacing:.34em;color:var(--fg);white-space:nowrap;
+  }
+  .titolo b .punto{color:var(--red)}
+  .titolo span{font-size:8px;letter-spacing:.26em;color:var(--fg-3);text-transform:uppercase;margin-top:2px}
+
+  .spazio{flex:1}
+
+  .chip{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;
+    border:1px solid var(--line-2);background:var(--surface);
+    font-size:10px;letter-spacing:.14em;white-space:nowrap;color:var(--fg-2);
+    transition:color .25s,border-color .25s}
+  .chip .p{width:7px;height:7px;border-radius:50%;background:var(--yellow)}
+  .chip.on{border-color:var(--turquoise);color:var(--turquoise)}
+  .chip.on .p{background:var(--turquoise);box-shadow:0 0 10px var(--turquoise)}
+  .chip.off{border-color:var(--red);color:var(--red)}
+  .chip.off .p{background:var(--red)}
+
+  .icona-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line-2);
+    background:var(--surface);color:var(--fg-2);font-size:15px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+    transition:color .2s,border-color .2s,transform .15s,background .2s}
+  .icona-btn:hover{border-color:var(--accent);color:var(--fg);background:var(--surface-2)}
+  .icona-btn:active{transform:scale(.94)}
+
+  /* ───────── palcoscenico ───────── */
+  .stage{position:relative;z-index:2;flex:1 1 auto;min-height:0;overflow:hidden;background:#1b1a19}
+  .feed{position:absolute;inset:0;overflow:hidden}
+  .feed img{width:100%;height:100%;object-fit:cover;display:block}
+  .feed.contain img{object-fit:contain}
+
+  .ang{position:absolute;width:14px;height:14px;border:1.5px solid rgba(246,244,242,.45);pointer-events:none}
+  .a1{top:10px;left:10px;border-right:0;border-bottom:0}
+  .a2{top:10px;right:10px;border-left:0;border-bottom:0}
+  .a3{bottom:10px;left:10px;border-right:0;border-top:0}
+  .a4{bottom:10px;right:10px;border-left:0;border-top:0}
+
+  .armato{box-shadow:inset 0 0 0 2px var(--turquoise)}
+  #badgeArma{position:absolute;top:12px;left:50%;transform:translateX(-50%);
+    padding:6px 16px;border-radius:999px;font-size:9.5px;letter-spacing:.18em;
+    background:rgba(37,36,35,.82);border:1px solid var(--line-2);color:var(--fg-3);
+    pointer-events:none;transition:all .3s;white-space:nowrap;backdrop-filter:blur(8px)}
+  #badgeArma.on{border-color:var(--turquoise);color:var(--turquoise)}
+
+  /* telemetria in sovrimpressione */
+  #hud{position:absolute;top:10px;right:12px;z-index:5;display:flex;gap:16px;
+    padding:7px 12px;border-radius:9px;font-size:10px;letter-spacing:.14em;
+    background:rgba(37,36,35,.62);border:1px solid rgba(246,244,242,.12);
+    backdrop-filter:blur(10px);pointer-events:none;color:var(--fg-3)}
+  #hud b{color:var(--turquoise);font-weight:600;letter-spacing:.06em}
+  @media(max-width:520px){#hud{display:none}}
+
+  /* ───────── overlay comandi ───────── */
+  .overlay{position:absolute;left:0;right:0;bottom:0;z-index:4;
+    background:linear-gradient(180deg,transparent,rgba(27,26,25,.55) 45%,rgba(27,26,25,.92));
+    pointer-events:none}
+  .overlay-inner{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    max-width:1180px;margin:0 auto;
+    padding:34px 14px calc(12px + env(safe-area-inset-bottom));
+  }
+  .overlay-inner > *{pointer-events:auto}
+
+  /* joystick: anello giallo, pomo corallo */
+  .joy{
+    position:relative;width:136px;height:136px;flex:0 0 auto;border-radius:50%;
+    background:radial-gradient(circle at 50% 38%, #34312f, #211f1e 72%);
+    border:1.5px solid var(--yellow);
+    box-shadow:0 0 0 1px rgba(255,204,42,.12), 0 14px 34px rgba(0,0,0,.5);
+    touch-action:none;user-select:none;
+  }
+  .joy::before{content:"";position:absolute;inset:15px;border-radius:50%;
+    border:1px dashed rgba(246,244,242,.18)}
+  .joy .pomo{
+    position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffc79a, var(--corail) 48%, #c14f14 100%);
+    box-shadow:0 8px 22px rgba(0,0,0,.55);
+    transition:box-shadow .2s;
+  }
+  .joy.attivo{border-color:var(--lime)}
+  .joy.attivo .pomo{box-shadow:0 8px 28px rgba(0,0,0,.6), 0 0 26px rgba(255,125,54,.75)}
+  .joy .dir{position:absolute;font-size:11px;color:rgba(246,244,242,.32);pointer-events:none}
+  .joy .d-up{top:6px;left:50%;transform:translateX(-50%)}
+  .joy .d-dn{bottom:6px;left:50%;transform:translateX(-50%)}
+  .joy .d-lf{left:7px;top:50%;transform:translateY(-50%)}
+  .joy .d-rt{right:7px;top:50%;transform:translateY(-50%)}
+
+  /* corpo: pannello caldo, accenti corallo */
+  .corpo{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:7px;
+    padding:10px;border-radius:16px;border:1px solid var(--line-2);
+    background:rgba(44,42,40,.82);backdrop-filter:blur(14px);
+    box-shadow:0 14px 34px rgba(0,0,0,.5);
+  }
+  .corpo button{
+    width:46px;height:46px;border-radius:11px;border:1px solid var(--line-2);
+    background:#3a3735;color:var(--fg);font-size:15px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:all .16s;
+  }
+  .corpo button:hover{border-color:var(--corail);color:#fff;background:#433f3c}
+  .corpo button:active{transform:scale(.92)}
+  .corpo button.stop{border-color:var(--red);color:var(--red)}
+  .corpo button.stop:hover{background:rgba(255,75,75,.16)}
+
+  @media(min-width:900px){
+    .joy{width:164px;height:164px}
+    .joy .pomo{width:64px;height:64px;margin:-32px 0 0 -32px}
+    .corpo{padding:12px;gap:8px}
+    .corpo button{width:54px;height:54px;font-size:17px}
+    .titolo b{font-size:17px;letter-spacing:.38em}
+    .overlay-inner{padding-bottom:20px}
+  }
+
+  /* telefoni stretti: tutto più compatto */
+  @media(max-width:390px){
+    .joy{width:118px;height:118px}
+    .joy .pomo{width:48px;height:48px;margin:-24px 0 0 -24px}
+    .corpo{padding:8px;gap:6px}
+    .corpo button{width:42px;height:42px;font-size:14px}
+    .titolo b{font-size:13px;letter-spacing:.26em}
+  }
+  @media(max-height:680px){
+    .overlay-inner{padding-top:18px}
+    .joy{width:104px;height:104px}
+    .joy .pomo{width:42px;height:42px;margin:-21px 0 0 -21px}
+    .corpo button{width:40px;height:40px;font-size:13px}
+  }
+
+  /* ───────── sheet ───────── */
+  #sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:10;
+    max-height:74vh;max-height:74dvh;display:flex;flex-direction:column;
+    background:var(--bg-2);
+    border-top:1px solid var(--line-2);
+    border-radius:22px 22px 0 0;
+    box-shadow:0 -20px 60px rgba(0,0,0,.7);
+    transform:translateY(102%);
+  }
+  .presa{flex:0 0 auto;padding:10px 0 6px;display:flex;justify-content:center;cursor:pointer}
+  .presa i{display:block;width:46px;height:4px;border-radius:99px;background:var(--line-2)}
+
+  .linguette{flex:0 0 auto;display:flex;gap:7px;padding:0 14px 10px;overflow-x:auto;
+    scrollbar-width:none}
+  .linguette::-webkit-scrollbar{display:none}
+  .linguette button{flex:0 0 auto;padding:8px 15px;border-radius:999px;
+    border:1px solid var(--line-2);background:transparent;color:var(--fg-3);
+    font:inherit;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    cursor:pointer;transition:all .2s;white-space:nowrap}
+  .linguette button:hover{color:var(--fg);border-color:var(--fg-3)}
+  .linguette button.attiva{color:#252423;background:var(--accent);border-color:var(--accent);font-weight:700}
+
+  .contenuto{flex:1 1 auto;overflow-y:auto;padding:4px 14px calc(22px + env(safe-area-inset-bottom))}
+
+  .griglia{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  @media(min-width:620px){.griglia{grid-template-columns:repeat(5,1fr)}}
+
+  .mossa{
+    padding:13px 6px;border-radius:13px;border:1px solid var(--line-2);
+    background:var(--surface);color:var(--fg);font:inherit;font-size:11px;
+    letter-spacing:.03em;cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;gap:4px;transition:all .18s;
+  }
+  .mossa .ic{font-size:17px;line-height:1}
+  .mossa .nt{font-size:8.5px;letter-spacing:.06em;color:var(--fg-3)}
+  .mossa:hover{border-color:var(--accent);background:var(--surface-2);color:#fff}
+  .mossa:active{transform:scale(.95)}
+  .mossa.loop{border-color:var(--yellow);background:rgba(255,204,42,.16);color:#fff;
+    animation:pulsa 1.5s ease-in-out infinite}
+  .mossa.loop .nt{color:var(--yellow)}
+  @keyframes pulsa{
+    0%,100%{box-shadow:0 0 0 0 rgba(255,204,42,.0)}
+    50%{box-shadow:0 0 0 3px rgba(255,204,42,.18)}
+  }
+
+  .riga{display:flex;align-items:center;gap:12px;margin:12px 0}
+  .riga .lab{font-size:9.5px;letter-spacing:.18em;color:var(--fg-3);text-transform:uppercase}
+
+  .pastiglie{display:flex;gap:8px;flex-wrap:wrap}
+  .pastiglia{width:30px;height:30px;border-radius:50%;border:2px solid var(--line-2);
+    cursor:pointer;transition:transform .15s,border-color .15s}
+  .pastiglia:hover{transform:scale(1.14);border-color:var(--fg)}
+  .pastiglia.sel{border-color:var(--fg);box-shadow:0 0 0 3px rgba(246,244,242,.16)}
+
+  .info{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;margin-top:8px}
+  .info .val{font-family:var(--font);font-size:24px;font-weight:700;color:var(--accent);
+    letter-spacing:.02em}
+  .info .lab{font-size:8.5px;letter-spacing:.18em;color:var(--fg-3);text-transform:uppercase;margin-top:2px}
+
+  .servi{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+  @media(min-width:620px){.servi{grid-template-columns:repeat(3,1fr)}}
+  .servo{display:flex;align-items:center;gap:4px;border:1px solid var(--line-2);
+    border-radius:11px;padding:6px 7px;background:var(--surface)}
+  .servo .nome{flex:1;font-size:10px;letter-spacing:.1em;color:var(--fg-3);min-width:26px}
+  .servo .val{min-width:34px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums;
+    color:var(--fg-3);display:inline-block;transition:color .2s}
+  .servo .val.pos{color:var(--turquoise)}
+  .servo .val.neg{color:var(--corail)}
+  .servo button{width:26px;height:26px;border-radius:7px;border:1px solid var(--line-2);
+    background:#3a3735;color:var(--fg);font:inherit;font-size:13px;line-height:1;
+    cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
+  .servo button:hover{border-color:var(--accent);color:#fff}
+
+  /* neofetch */
+  .neofetch{display:flex;gap:20px;align-items:flex-start;padding:4px 0 12px;overflow-x:auto}
+  .pi-art{font-family:var(--mono);font-size:11px;line-height:1.02;margin:0;
+    white-space:pre;flex:0 0 auto;letter-spacing:0}
+  .pi-art .a-w{color:#f6f4f2}
+  .pi-art .a-r{color:#ff4b4b}
+  @media(max-width:900px){.pi-art{font-size:9px;line-height:1.05}}
+  @media(max-width:600px){
+    .neofetch{flex-direction:column;align-items:center;gap:12px}
+    .pi-art{font-size:8px;line-height:1.1;align-self:center}
+  }
+  .nf-gruppi{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}
+  .nf-titolo{font-size:8.5px;letter-spacing:.22em;color:var(--accent);text-transform:uppercase;
+    padding-bottom:5px;border-bottom:1px solid var(--line-2);margin-bottom:5px}
+  .barre{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
+  @media(min-width:560px){.barre{grid-template-columns:repeat(2,1fr)}}
+  .barra-testata{display:flex;justify-content:space-between;gap:10px;font-size:10px;
+    letter-spacing:.1em;color:var(--fg-3);margin-bottom:6px}
+  .barra-testata b{color:var(--fg-2);font-weight:600}
+  .barra-fondo{height:6px;border-radius:99px;background:#1b1a19;overflow:hidden;
+    border:1px solid rgba(246,244,242,.06)}
+  .barra-fondo i{display:block;height:100%;border-radius:99px;width:0;
+    background:var(--accent);box-shadow:0 0 12px var(--accent)}
+  .nf-riga{display:flex;gap:10px;font-size:11px;padding:3px 0;
+    border-bottom:1px dashed rgba(246,244,242,.06)}
+  .nf-k{color:var(--accent);min-width:76px;font-weight:600;letter-spacing:.04em}
+  .nf-v{color:var(--fg-2);word-break:break-word}
+
+  .nota{font-size:10px;line-height:1.6;color:var(--fg-3);margin:10px 0 0;max-width:60ch}
+
+  #stopflot{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:9;
+    padding:13px 22px;border-radius:12px;border:1px solid var(--red);
+    background:rgba(255,75,75,.14);color:var(--red);font:inherit;font-size:11px;
+    letter-spacing:.18em;backdrop-filter:blur(10px);cursor:pointer;display:none}
+  #stopflot.vis{display:block}
+</style>
+</head>
+<body>
+
+<!-- ══════ HEADER ORIZZONTALE ══════ -->
+<div class="bar">
+  <div class="reattore" id="reattore">
+    <div class="anello"></div><div class="anello"></div><div class="nucleo"></div>
+  </div>
+  <div class="titolo">
+    <b>J.A.R.V.I.S<span class="punto">.</span></b>
+    <span>spider control</span>
+  </div>
+  <div class="spazio"></div>
+  <div class="chip" id="conn"><span class="p"></span><span id="conntxt">…</span></div>
+  <button class="icona-btn" id="fitBtn" title="riempi schermo / adatta">⤢</button>
+  <button class="icona-btn" id="apriSheet" title="comandi">☰</button>
+</div>
+
+<!-- ══════ CAMERA + COMANDI IN TRASPARENZA ══════ -->
+<div class="stage" id="stage">
+  <div class="feed"><img id="cam" src="/video_feed" alt="camera"></div>
+  <div class="ang a1"></div><div class="ang a2"></div>
+  <div class="ang a3"></div><div class="ang a4"></div>
+  <div id="badgeArma">tocca il video per attivare i comandi</div>
+  <div id="hud">
+    <span>TEMP <b id="h-temp">–</b></span>
+    <span>LOAD <b id="h-cpu">–</b></span>
+  </div>
+
+  <div class="overlay">
+    <div class="overlay-inner">
+      <!-- joystick sferico -->
+      <div class="joy" id="joy">
+        <span class="dir d-up">▲</span><span class="dir d-dn">▼</span>
+        <span class="dir d-lf">◀</span><span class="dir d-rt">▶</span>
+        <div class="pomo" id="pomo"></div>
+      </div>
+
+      <!-- corpo, compatto e trasparente -->
+      <div class="corpo">
+        <button data-cmd="StandUp" title="In piedi">⬆</button>
+        <button data-cmd="up" title="Muso su">↥</button>
+        <button data-cmd="StayLow" title="Rannicchiato">⬇</button>
+        <button data-cmd="Lean_L" title="Pendii a sinistra">↰</button>
+        <button class="stop" data-cmd="DS" title="Ferma">■</button>
+        <button data-cmd="Lean_R" title="Pendii a destra">↱</button>
+        <button data-cmd="steadyCamera" title="Stabilizza">⚖</button>
+        <button data-cmd="down" title="Muso giù">↧</button>
+        <button data-cmd="steadyCameraOff" title="No stabilizza">✖</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ SHEET ══════ -->
+<div id="sheet">
+  <div class="presa" id="presa"><i></i></div>
+  <div class="linguette" id="linguette"></div>
+  <div class="contenuto" id="contenuto"></div>
+</div>
+
+<pre id="arte-pi" hidden><span class="a-w">       _,met$$$$$gg.</span>
+<span class="a-w">    ,g$$$$$$$$$$$$$$$P.</span>
+<span class="a-w">  ,g$$P"        """Y$$.".</span>
+<span class="a-w"> ,$$P'              `$$$.</span>
+<span class="a-w">',$$P       ,ggs.     `$$b:</span>
+<span class="a-w">`d$$'     ,$P"'   </span><span class="a-r">.</span><span class="a-w">    $$$</span>
+<span class="a-w"> $$P      d$'     </span><span class="a-r">,</span><span class="a-w">    $$P</span>
+<span class="a-w"> $$:      $$.   </span><span class="a-r">-</span><span class="a-w">    ,d$$'</span>
+<span class="a-w"> $$;      Y$b._   _,d$P'</span>
+<span class="a-w"> Y$$.    </span><span class="a-r">`.</span><span class="a-w">`"Y$$$$P"'</span>
+<span class="a-w"> `$$b      </span><span class="a-r">"-.__</span>
+<span class="a-w">  `Y$$</span>
+<span class="a-w">   `Y$$.</span>
+<span class="a-w">     `$$b.</span>
+<span class="a-w">       `Y$$b.</span>
+<span class="a-w">          `"Y$b._</span>
+<span class="a-w">              `"""</span>
+</pre>
+
+<button id="stopflot">■ STOP LOOP</button>
+
+<script src="/js/anime.min.js"></script>
+<script>
+/* ══════════ websocket ══════════ */
+let ws = null, loggato = false, tentativi = 0;
+
+function statoConn(cls, txt){
+  const c = document.getElementById("conn");
+  c.className = "chip " + cls;
+  document.getElementById("conntxt").textContent = txt;
+}
+
+function connetti(){
+  try { ws = new WebSocket(`ws://${location.hostname}:8888`); }
+  catch(e){ setTimeout(connetti, 3000); return; }
+
+  ws.onopen = () => { tentativi = 0; ws.send("admin:123456"); statoConn("", "auth…"); };
+
+  ws.onmessage = (ev) => {
+    const testo = ev.data;
+    if (!loggato && String(testo).indexOf("congratulation") >= 0){
+      loggato = true; statoConn("on", "online"); cmd("get_info"); return;
+    }
+    try {
+      const d = JSON.parse(testo);
+      if (d && d.title === "get_info" && Array.isArray(d.data)){
+        setInfo(d.data);
+      }
+    } catch(e){}
+  };
+
+  ws.onclose = () => {
+    loggato = false; statoConn("off", "offline");
+    tentativi++; setTimeout(connetti, Math.min(8000, 1000*tentativi));
+  };
+  ws.onerror = () => {};
+}
+
+function cmd(t){
+  if (ws && ws.readyState === WebSocket.OPEN){ ws.send(t); return true; }
+  return false;
+}
+
+function aggiornaNumero(id, valore, suffisso){
+  const el = document.getElementById(id);
+  if (!el) return;
+  const da = parseFloat(el.dataset.v || "0");
+  const a  = parseFloat(valore) || 0;
+  el.dataset.v = a;
+  const ogg = { v: da };
+  anime({
+    targets: ogg, v: a, round: 1, duration: 720, easing: "easeOutQuad",
+    update(){ el.textContent = Math.round(ogg.v) + suffisso; }
+  });
+}
+
+function setInfo(d){
+  aggiornaNumero("i-temp", d[0], "°");
+  aggiornaNumero("i-cpu",  d[1], "%");
+  aggiornaNumero("i-ram",  d[2], "%");
+  // telemetria sempre visibile sopra il video
+  const t = document.getElementById("h-temp"), c = document.getElementById("h-cpu");
+  if (t) t.textContent = d[0] + "°";
+  if (c) c.textContent = d[1] + "%";
+}
+setInterval(() => { if (loggato) cmd("get_info"); }, 5000);
+
+/* ══════════ riempi / adatta il video ══════════ */
+const feed = document.querySelector(".feed");
+let riempi = localStorage.getItem("jarvisFit") !== "contain";
+
+function applicaFit(){
+  feed.classList.toggle("contain", !riempi);
+  document.getElementById("fitBtn").textContent = riempi ? "⛶" : "⤢";
+  document.getElementById("fitBtn").title = riempi ? "mostra tutto il fotogramma" : "riempi lo schermo";
+}
+document.getElementById("fitBtn").addEventListener("click", (e) => {
+  riempi = !riempi;
+  localStorage.setItem("jarvisFit", riempi ? "cover" : "contain");
+  applicaFit();
+  anime({ targets: e.currentTarget, scale:[1,.85,1], duration: 300, easing:"easeOutQuad" });
+});
+applicaFit();
+
+/* ══════════ arma i controlli ══════════ */
+let armato = false;
+const stage = document.getElementById("stage");
+const badge = document.getElementById("badgeArma");
+
+function arma(v){
+  armato = v;
+  stage.classList.toggle("armato", v);
+  badge.classList.toggle("on", v);
+  badge.textContent = v ? "controlli attivi · frecce / joystick" : "tocca il video per attivare i comandi";
+  if (!v) fermaMarcia();
+}
+
+stage.addEventListener("click", (e) => {
+  if (e.target.closest(".overlay")) return;
+  arma(!armato);
+});
+
+/* ══════════ marcia ══════════ */
+let comandoAttivo = null;
+
+function marcia(dir){
+  if (comandoAttivo === dir) return;
+  comandoAttivo = dir;
+  cmd(dir);
+  if (navigator.vibrate) navigator.vibrate(8);
+}
+
+function fermaMarcia(){
+  if (comandoAttivo === null) return;
+  comandoAttivo = null;
+  cmd("DS");
+  setTimeout(() => cmd("TS"), 60);
+}
+
+/* ══════════ tastiera (desktop) ══════════ */
+const TASTI = { ArrowUp:"forward", ArrowDown:"backward", ArrowLeft:"left", ArrowRight:"right",
+                w:"forward", s:"backward", a:"left", d:"right" };
+
+window.addEventListener("keydown", (e) => {
+  if (!armato) return;
+  const c = TASTI[e.key];
+  if (!c) return;
+  e.preventDefault();
+  marcia(c);
+});
+window.addEventListener("keyup", (e) => {
+  if (!armato) return;
+  if (!TASTI[e.key]) return;
+  e.preventDefault();
+  if (TASTI[e.key] === comandoAttivo) fermaMarcia();
+});
+
+/* ══════════ joystick sferico ══════════ */
+const joy = document.getElementById("joy");
+const pomo = document.getElementById("pomo");
+let joyId = null, centro = null, raggio = 0;
+
+function joyInizio(e){
+  e.preventDefault();
+  if (!armato) arma(true);
+  joyId = e.pointerId;
+  joy.setPointerCapture(joyId);
+  const r = joy.getBoundingClientRect();
+  centro = { x: r.left + r.width/2, y: r.top + r.height/2 };
+  raggio = r.width/2;
+  joy.classList.add("attivo");
+  joyMuovi(e);
+}
+
+function joyMuovi(e){
+  if (joyId === null || e.pointerId !== joyId) return;
+  let dx = e.clientX - centro.x;
+  let dy = e.clientY - centro.y;
+  const dist = Math.hypot(dx, dy);
+  const max = raggio * 0.62;
+  if (dist > max){ dx = dx / dist * max; dy = dy / dist * max; }
+  pomo.style.transform = `translate(${dx}px, ${dy}px)`;
+
+  const soglia = raggio * 0.30;
+  if (Math.abs(dx) < soglia && Math.abs(dy) < soglia){ fermaMarcia(); return; }
+
+  if (Math.abs(dx) > Math.abs(dy)) marcia(dx > 0 ? "right" : "left");
+  else                              marcia(dy > 0 ? "backward" : "forward");
+}
+
+function joyFine(e){
+  if (joyId === null || (e && e.pointerId !== joyId)) return;
+  joyId = null;
+  joy.classList.remove("attivo");
+  fermaMarcia();
+  anime({ targets: pomo, translateX: 0, translateY: 0,
+          duration: 520, easing: "easeOutElastic(1,.55)" });
+}
+
+joy.addEventListener("pointerdown", joyInizio);
+joy.addEventListener("pointermove", joyMuovi);
+joy.addEventListener("pointerup", joyFine);
+joy.addEventListener("pointercancel", joyFine);
+
+/* ══════════ pulsanti corpo ══════════ */
+document.querySelectorAll(".corpo [data-cmd]").forEach(b => {
+  b.addEventListener("click", () => {
+    anime({ targets: b, scale:[1,.9,1], duration: 240, easing:"easeOutQuad" });
+    if (navigator.vibrate) navigator.vibrate(10);
+    const c = b.dataset.cmd;
+    if (c === "DS") { fermaMarcia(); return; }
+    cmd(c);
+  });
+});
+
+/* ══════════ mosse in loop ══════════ */
+const MOSSE = [
+  ["risveglio","Risveglio","◎","25 s"],
+  ["servo","Onda larga","🌊","4 zampe"],
+  ["cascata","Cascata","🌀","diagonale"],
+  ["passotest","Passo test","🦵","4 zampe"],
+  ["marcia","Marcia","🥁","diagonali"],
+  ["passo","Scatto","🚶","sul posto"],
+  ["allungo_dx","Allungo DX","↗",""],
+  ["allungo_sx","Allungo SX","↖",""],
+  ["petalo","Petalo","🌸","altalena"],
+  ["dondolio","Dondolio","〰","destra/sx"],
+  ["cerchio","Cerchio","⟳","circolare"],
+  ["torsione","Torsione","🔀","avvita"],
+  ["scalini","Scalini","🪜","gradini"],
+  ["ventaglio","Ventaglio","🃏","forbice"],
+  ["battito","Battito","💥","colpi"],
+  ["muso_su","Muso su","⬆",""],
+  ["muso_giu","Muso giù","⬇",""],
+  ["saluto","Saluto","👋","onda"],
+  ["saluto_rev","Saluto ↩","🤚","inversa"],
+  ["saluto_lento","Saluto lento","🖐","per punta"],
+  ["finale","Posa finale","🛋","muso giù"],
+  ["led_on","LED on","🔆","frontale"],
+  ["led_off","LED off","🌑","frontale"]
+];
+const bottoniMosse = {};
+
+function costruisciMosse(contenitore){
+  const g = document.createElement("div");
+  g.className = "griglia";
+  MOSSE.forEach(([id,nome,icona,nota]) => {
+    const b = document.createElement("button");
+    b.className = "mossa";
+    b.innerHTML = `<span class="ic">${icona}</span><span>${nome}</span>` + (nota?`<span class="nt">${nota}</span>`:"");
+    b.addEventListener("click", () => inviaMossa(id, b));
+    g.appendChild(b);
+    bottoniMosse[id] = b;
+  });
+  contenitore.appendChild(g);
+}
+
+async function inviaMossa(id, b){
+  if (b) anime({ targets:b, scale:[1,.93,1], duration:260, easing:"easeOutQuad" });
+  if (navigator.vibrate) navigator.vibrate(12);
+  try { await fetch("/api/comando/" + encodeURIComponent(id), { method:"POST" }); } catch(e){}
+  controllaStato();
+}
+
+async function fermaLoop(){
+  try { await fetch("/api/comando/stop", { method:"POST" }); } catch(e){}
+  controllaStato();
+}
+document.getElementById("stopflot").addEventListener("click", fermaLoop);
+
+let timerStato = null;
+async function controllaStato(){
+  clearTimeout(timerStato);
+  try {
+    const r = await fetch("/api/comandi", { cache:"no-store" });
+    const d = await r.json();
+    Object.keys(bottoniMosse).forEach(id =>
+      bottoniMosse[id].classList.toggle("loop", id === d.loop));
+    document.getElementById("stopflot").classList.toggle("vis", !!d.loop);
+    timerStato = setTimeout(controllaStato, 1200);
+  } catch(e){ timerStato = setTimeout(controllaStato, 4000); }
+}
+
+/* ══════════ visione: selettore colore ══════════ */
+const COLORI = [
+  ["Rosso",   [0,   220, 220], "#ff3b30"],
+  ["Arancio", [15,  220, 220], "#ff9500"],
+  ["Giallo",  [30,  210, 230], "#ffcc00"],
+  ["Verde",   [60,  200, 190], "#34c759"],
+  ["Ciano",   [90,  200, 200], "#32d0e0"],
+  ["Blu",     [120, 210, 210], "#0a84ff"],
+  ["Viola",   [140, 200, 200], "#af52de"],
+  ["Magenta", [165, 210, 210], "#ff2d95"]
+];
+
+function rgb2hsv(r, g, b){
+  r/=255; g/=255; b/=255;
+  const mx = Math.max(r,g,b), mn = Math.min(r,g,b), d = mx - mn;
+  let h = 0;
+  if (d){
+    if (mx === r) h = ((g-b)/d) % 6;
+    else if (mx === g) h = (b-r)/d + 2;
+    else h = (r-g)/d + 4;
+    h *= 60;
+  }
+  if (h < 0) h += 360;
+  return [Math.round(h/2), Math.round(mx ? d/mx*255 : 0), Math.round(mx*255)];
+}
+
+function impostaColore(h, s, v){
+  cmd(JSON.stringify({ title:"findColorSet", data:[h, s, v] }));
+  setTimeout(() => cmd("findColor"), 120);
+}
+
+function costruisciVisione(contenitore){
+  const riga = document.createElement("div");
+  riga.className = "riga";
+  riga.innerHTML = '<span class="lab">colore da seguire</span>';
+  contenitore.appendChild(riga);
+
+  const past = document.createElement("div");
+  past.className = "pastiglie";
+  COLORI.forEach(([nome, hsv, hex]) => {
+    const p = document.createElement("div");
+    p.className = "pastiglia";
+    p.style.background = hex;
+    p.title = nome;
+    p.addEventListener("click", () => {
+      past.querySelectorAll(".pastiglia").forEach(x => x.classList.remove("sel"));
+      p.classList.add("sel");
+      impostaColore(hsv[0], hsv[1], hsv[2]);
+    });
+    past.appendChild(p);
+  });
+  contenitore.appendChild(past);
+
+  const riga2 = document.createElement("div");
+  riga2.className = "riga";
+  const inp = document.createElement("input");
+  inp.type = "color";
+  inp.value = "#34c759";
+  inp.style.cssText = "width:56px;height:34px;border:none;background:none;padding:0;cursor:pointer";
+  inp.addEventListener("change", () => {
+    const r = parseInt(inp.value.slice(1,3),16),
+          g = parseInt(inp.value.slice(3,5),16),
+          b = parseInt(inp.value.slice(5,7),16);
+    const [h,s,v] = rgb2hsv(r,g,b);
+    riga2.querySelector(".lab").textContent = "colore personalizzato";
+    impostaColore(h, s, v);
+  });
+  const lab = document.createElement("span");
+  lab.className = "lab";
+  lab.textContent = "colore personalizzato";
+  riga2.appendChild(inp); riga2.appendChild(lab);
+  contenitore.appendChild(riga2);
+
+  const btns = document.createElement("div");
+  btns.className = "griglia";
+  [["findColor","Avvia inseguimento","🎯"],["stopCV","Ferma","✖"],
+   ["motionGet","Rileva movimento","👁"]].forEach(([c,n,i]) => {
+    const b = document.createElement("button");
+    b.className = "mossa";
+    b.innerHTML = `<span class="ic">${i}</span><span>${n}</span>`;
+    b.addEventListener("click", () => cmd(c));
+    btns.appendChild(b);
+  });
+  contenitore.appendChild(btns);
+
+  const n = document.createElement("p");
+  n.className = "nota";
+  n.textContent = "Il ragno insegue la macchia di colore più grande che vede. " +
+                  "Funziona meglio con oggetti molto saturi e ben illuminati; " +
+                  "se non trova nulla, prova un colore più acceso o avvicina l'oggetto.";
+  contenitore.appendChild(n);
+}
+
+/* ══════════ luci ══════════ */
+function costruisciLuci(contenitore){
+  const g = document.createElement("div");
+  g.className = "griglia";
+  [["police","Polizia","🚨"],["policeOff","Riposo","💤"],
+   ["Switch_1_on","Switch 1 on","1"],["Switch_1_off","Switch 1 off","1"],
+   ["Switch_2_on","Switch 2 on","2"],["Switch_2_off","Switch 2 off","2"],
+   ["Switch_3_on","Switch 3 on","3"],["Switch_3_off","Switch 3 off","3"]]
+  .forEach(([c,n,i]) => {
+    const b = document.createElement("button");
+    b.className = "mossa";
+    b.innerHTML = `<span class="ic">${i}</span><span>${n}</span>`;
+    b.addEventListener("click", () => { cmd(c); if (navigator.vibrate) navigator.vibrate(8); });
+    g.appendChild(b);
+  });
+  contenitore.appendChild(g);
+  const n = document.createElement("p");
+  n.className = "nota";
+  n.textContent = "I tre Switch comandano le strisce LED WS2812 e il LED frontale " +
+                  "in modo indipendente, come sul pannello originale.";
+  contenitore.appendChild(n);
+}
+
+/* ══════════ sistema ══════════ */
+let timerSistema = null;
+let barrePronte = false;
+
+function costruisciSistema(contenitore){
+  const arte = document.getElementById("arte-pi").innerHTML.trim();
+  contenitore.innerHTML =
+    '<div class="neofetch">' +
+      '<pre class="pi-art">' + arte + '</pre>' +
+      '<div class="nf-gruppi" id="nf-gruppi">' +
+        '<div class="nf-riga"><span class="nf-k">…</span></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="barre" id="nf-barre"></div>';
+  barrePronte = false;
+  caricaSistema();
+  clearInterval(timerSistema);
+  timerSistema = setInterval(() => {
+    if (document.getElementById("nf-gruppi")) caricaSistema();
+  }, 5000);
+}
+
+async function caricaSistema(){
+  try {
+    const r = await fetch("/api/sistema", { cache:"no-store" });
+    const d = await r.json();
+
+    const box = document.getElementById("nf-gruppi");
+    if (!box) return;
+    box.innerHTML = (d.gruppi || []).map(g =>
+      '<div class="nf-gruppo">' +
+        `<div class="nf-titolo">${g.titolo}</div>` +
+        g.righe.map(([k, v]) =>
+          `<div class="nf-riga"><span class="nf-k">${k}</span><span class="nf-v">${v}</span></div>`
+        ).join('') +
+      '</div>'
+    ).join('');
+
+    const barre = document.getElementById("nf-barre");
+    const misure = d.misure || [];
+    if (barre && !barrePronte) {
+      barre.innerHTML = misure.map(m =>
+        '<div class="barra">' +
+          `<div class="barra-testata"><b>${m.etichetta}</b><span>${m.testo}</span></div>` +
+          `<div class="barra-fondo"><i id="barra-${m.etichetta}"></i></div>` +
+        '</div>'
+      ).join('');
+      barrePronte = true;
+    }
+    misure.forEach(m => {
+      const el = document.getElementById("barra-" + m.etichetta);
+      if (!el) return;
+      el.parentNode.previousElementSibling.querySelector("span:last-child").textContent = m.testo;
+      anime({ targets: el, width: m.valore + "%", duration: 900, easing: "easeOutCubic" });
+    });
+
+    if (d.telemetria){
+      const t = document.getElementById("h-temp"), c = document.getElementById("h-cpu");
+      if (t) t.textContent = d.telemetria.temp;
+      if (c) c.textContent = d.telemetria.cpu;
+    }
+  } catch (e) {}
+}
+
+/* ══════════ luci ══════════ */
+function costruisciLuci(contenitore){
+  const g = document.createElement("div");
+  g.className = "griglia";
+  [["police","Polizia","🚨"],["policeOff","Riposo","💤"],
+   ["Switch_1_on","Switch 1 on","1"],["Switch_1_off","Switch 1 off","1"],
+   ["Switch_2_on","Switch 2 on","2"],["Switch_2_off","Switch 2 off","2"],
+   ["Switch_3_on","Switch 3 on","3"],["Switch_3_off","Switch 3 off","3"]]
+  .forEach(([c,n,i]) => {
+    const b = document.createElement("button");
+    b.className = "mossa";
+    b.innerHTML = `<span class="ic">${i}</span><span>${n}</span>`;
+    b.addEventListener("click", () => { cmd(c); if (navigator.vibrate) navigator.vibrate(8); });
+    g.appendChild(b);
+  });
+  contenitore.appendChild(g);
+  const n = document.createElement("p");
+  n.className = "nota";
+  n.textContent = "I tre Switch comandano le strisce LED WS2812 e il LED frontale " +
+                  "in modo indipendente, come sul pannello originale.";
+  contenitore.appendChild(n);
+}
+
+/* ══════════ avanzi: trim servi ══════════ */
+const SERVI = [[0,"FLB"],[1,"FLM"],[2,"FLE"],[3,"HLB"],[4,"HLM"],[5,"HLE"],
+               [6,"FRB"],[7,"FRM"],[8,"FRE"],[9,"HRB"],[10,"HRM"],[11,"HRE"]];
+
+function costruisciTrim(contenitore){
+  const p = document.createElement("p");
+  p.className = "nota";
+  p.textContent = "È il \"PWM INIT SET\" del pannello originale: − e + spostano il servo " +
+    "di 5 unità, ⌂ lo riporta a 300. Il numero a destra dice di quanto hai corretto " +
+    "quel servo rispetto a 300. Serve a mettere in linea una zampa che a riposo sta " +
+    "più alta o più bassa delle altre: è una calibrazione meccanica, non una mossa.";
+  contenitore.appendChild(p);
+
+  // offset locale per servo: il firmware parte da 300 e si muove di 5 alla volta
+  const offset = {};
+  SERVI.forEach(([n]) => offset[n] = 0);
+
+  const barra = document.createElement("div");
+  barra.className = "riga";
+  const bt = document.createElement("button");
+  bt.className = "mossa";
+  bt.style.flexDirection = "row";
+  bt.style.gap = "8px";
+  bt.style.padding = "10px 16px";
+  bt.innerHTML = '<span class="ic">↺</span><span>Azzera tutti a 300</span>';
+  bt.addEventListener("click", () => {
+    cmd("steadyCameraOff");
+    setTimeout(() => cmd("PWMD"), 150);
+    SERVI.forEach(([n]) => { offset[n] = 0; aggiornaValore(n); });
+    if (navigator.vibrate) navigator.vibrate(18);
+  });
+  barra.appendChild(bt);
+  contenitore.appendChild(barra);
+
+  const g = document.createElement("div");
+  g.className = "servi";
+
+  function aggiornaValore(n){
+    const el = document.getElementById("val-" + n);
+    if (!el) return;
+    const v = offset[n];
+    el.textContent = (v > 0 ? "+" : "") + v;
+    el.classList.toggle("pos", v > 0);
+    el.classList.toggle("neg", v < 0);
+    anime({ targets: el, scale: [1, 1.3, 1], duration: 280, easing: "easeOutQuad" });
+  }
+
+  SERVI.forEach(([n,nome]) => {
+    const d = document.createElement("div");
+    d.className = "servo";
+    d.innerHTML = `<span class="nome">${nome}</span>` +
+      `<span class="val" id="val-${n}">0</span>` +
+      `<button data-sx="${n}" title="−5">−</button>` +
+      `<button data-dx="${n}" title="+5">+</button>` +
+      `<button class="rst" data-rst="${n}" title="torna a 300">⌂</button>`;
+    g.appendChild(d);
+  });
+
+  g.addEventListener("click", (e) => {
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (navigator.vibrate) navigator.vibrate(6);
+
+    // Due vincoli del firmware originale, entrambi necessari:
+    // 1) il trim è ignorato se SteadyMode != 0 → spengo "Stabilizza" prima
+    // 2) il numero servo va separato da uno SPAZIO ("SiLeft 0", non "SiLeft0"),
+    //    altrimenti int(command_input[7:]) riceve "" e la connessione cade
+    cmd("steadyCameraOff");
+
+    let comando = null;
+    if (t.dataset.sx !== undefined){
+      const n = t.dataset.sx;
+      offset[n] -= 5; comando = "SiLeft " + n; aggiornaValore(n);
+    } else if (t.dataset.dx !== undefined){
+      const n = t.dataset.dx;
+      offset[n] += 5; comando = "SiRight " + n; aggiornaValore(n);
+    } else if (t.dataset.rst !== undefined){
+      const n = t.dataset.rst;
+      offset[n] = 0; comando = "PWMMS " + n; aggiornaValore(n);
+    }
+
+    if (comando) setTimeout(() => cmd(comando), 150);
+  });
+  contenitore.appendChild(g);
+
+  const n2 = document.createElement("p");
+  n2.className = "nota";
+  n2.textContent = "Il conteggio parte da 300 e si azzera se ricarichi la pagina: " +
+    "il firmware non espone il valore reale, quindi la pagina tiene il conto di " +
+    "quello che ha inviato. Se riavvii il servizio torna tutto a 300.";
+  contenitore.appendChild(n2);
+}
+
+/* ══════════ sheet: costruzione e apertura ══════════ */
+const sheet = document.getElementById("sheet");
+const contenuto = document.getElementById("contenuto");
+const linguette = document.getElementById("linguette");
+
+// ogni linguetta ha il suo colore, come le sezioni colorate di anime.js
+const SEZIONI = [
+  ["Mosse",   costruisciMosse,   "#b7ff54"],
+  ["Luci",    costruisciLuci,    "#e962bf"],
+  ["Visione", costruisciVisione, "#c06ddf"],
+  ["Info", costruisciSistema, "#00ffaa"],
+  ["Trim",    costruisciTrim,    "#ffcc2a"]
+];
+
+let sezioneAttiva = 0;
+let sheetAperta = false;
+
+function mostraSezione(i){
+  sezioneAttiva = i;
+  clearInterval(timerSistema);
+  document.documentElement.style.setProperty("--accent", SEZIONI[i][2]);
+  contenuto.innerHTML = "";
+  SEZIONI[i][1](contenuto);
+  [...linguette.children].forEach((b, k) => b.classList.toggle("attiva", k === i));
+  contenuto.scrollTop = 0;
+}
+
+SEZIONI.forEach(([nome], i) => {
+  const b = document.createElement("button");
+  b.textContent = nome;
+  b.addEventListener("click", () => mostraSezione(i));
+  linguette.appendChild(b);
+});
+mostraSezione(0);
+
+function apriSheet(v){
+  sheetAperta = v;
+  anime.remove(sheet);
+  anime({
+    targets: sheet,
+    translateY: v ? "0%" : "102%",
+    duration: v ? 520 : 380,
+    easing: v ? "easeOutCubic" : "easeInCubic"
+  });
+}
+
+document.getElementById("apriSheet").addEventListener("click", () => apriSheet(!sheetAperta));
+document.getElementById("presa").addEventListener("click", () => apriSheet(!sheetAperta));
+
+/* trascina la sheet per chiuderla */
+let tocco = null;
+document.getElementById("presa").addEventListener("pointerdown", (e) => {
+  tocco = { y: e.clientY };
+});
+window.addEventListener("pointerup", (e) => {
+  if (!tocco) return;
+  if (e.clientY - tocco.y > 60) apriSheet(false);
+  tocco = null;
+});
+
+/* ══════════ animazioni ══════════ */
+anime({ targets: ".anello", rotate:[0,360], duration:(e,i)=>9000+i*3000,
+        easing:"linear", loop:true, direction:(e,i)=> i%2 ? "reverse" : "normal" });
+anime({ targets: ".nucleo", scale:[.8,1.15], opacity:[.55,1], duration:1600,
+        direction:"alternate", loop:true, easing:"easeInOutSine" });
+// Solo trasformazioni: niente opacity. Così i comandi sono SEMPRE visibili,
+// anche se l'animazione parte in ritardo (o non parte affatto).
+anime({ targets: ".bar > *", translateY:[-14,0], duration:760,
+        delay: anime.stagger(60), easing:"easeOutElastic(1,.8)" });
+anime({ targets: ".overlay-inner > *", translateY:[28,0], scale:[.93,1],
+        duration:900, delay: anime.stagger(120, { start: 240 }),
+        easing:"easeOutElastic(1,.7)" });
+
+
+
+/* avvio */
+connetti();
+controllaStato();
+</script>
+</body>
+</html>

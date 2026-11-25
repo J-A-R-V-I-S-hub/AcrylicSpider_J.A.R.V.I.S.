@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#252423">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<title>J.A.R.V.I.S. — Accesso</title>
+<style>
+  :root{
+    --bg:#252423; --bg-2:#2c2a28; --fg:#f6f4f2; --fg-2:#cccac8; --fg-3:#85827e;
+    --line:#3b3936; --line-2:#4a4745; --surface:#2c2a28; --surface-2:#333130;
+    --red:#ff4b4b; --corail:#ff7d36; --yellow:#ffcc2a; --lime:#b7ff54;
+    --turquoise:#00ffaa; --magenta:#e962bf;
+    --font:"Helvetica Neue",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);color:var(--fg);
+    font-family:var(--mono);font-size:13px;
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;min-height:100dvh;padding:20px;
+    overflow:hidden;-webkit-font-smoothing:antialiased;
+  }
+  /* griglia di punti, come la home di anime.js */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;
+    background-image:radial-gradient(rgba(246,244,242,.085) 1px, transparent 1px);
+    background-size:22px 22px;
+    -webkit-mask-image:radial-gradient(ellipse at 50% 40%, #000 0%, transparent 75%);
+    mask-image:radial-gradient(ellipse at 50% 40%, #000 0%, transparent 75%);
+  }
+
+  .box{position:relative;width:100%;max-width:380px;z-index:1;
+    animation:entra .7s cubic-bezier(.22,1,.36,1) both}
+  @keyframes entra{from{opacity:0;transform:translateY(18px) scale(.97)}
+                   to{opacity:1;transform:none}}
+
+  /* reattore */
+  .reattore{position:relative;width:96px;height:96px;margin:0 auto 18px}
+  .anello{position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--turquoise)}
+  .anello:nth-child(1){animation:gira 9s linear infinite}
+  .anello:nth-child(2){inset:13px;border:1.5px dashed var(--line-2);
+    animation:gira 14s linear infinite reverse}
+  .anello:nth-child(3){inset:27px;border-color:var(--yellow);
+    animation:gira 6s linear infinite}
+  .nucleo{position:absolute;inset:38px;border-radius:50%;background:var(--turquoise);
+    box-shadow:0 0 22px var(--turquoise);
+    animation:respira 2.2s ease-in-out infinite}
+  @keyframes gira{to{transform:rotate(360deg)}}
+  @keyframes respira{0%,100%{transform:scale(.78);opacity:.65}
+                     50%{transform:scale(1.12);opacity:1}}
+
+  h1{margin:0;text-align:center;font-family:var(--font);font-size:22px;
+    font-weight:700;letter-spacing:.36em;color:var(--fg);padding-left:.36em}
+  h1 .punto{color:var(--red)}
+  .sub{margin:7px 0 26px;text-align:center;font-size:8.5px;letter-spacing:.26em;
+    color:var(--fg-3);text-transform:uppercase}
+
+  form{background:var(--surface);border:1px solid var(--line-2);border-radius:18px;
+    padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+  label{display:block;font-size:8.5px;letter-spacing:.22em;color:var(--fg-3);
+    text-transform:uppercase;margin:0 0 6px}
+  input{
+    width:100%;padding:13px 14px;margin-bottom:16px;
+    background:#1b1a19;border:1px solid var(--line-2);border-radius:11px;
+    color:var(--fg);font:inherit;font-size:13px;outline:none;
+    transition:border-color .2s, box-shadow .2s;
+  }
+  input:focus{border-color:var(--turquoise);box-shadow:0 0 0 3px rgba(0,255,170,.12)}
+  button{
+    width:100%;padding:14px;border-radius:11px;cursor:pointer;
+    border:1px solid var(--turquoise);background:rgba(0,255,170,.14);
+    color:var(--turquoise);font:inherit;font-size:12px;letter-spacing:.24em;
+    text-transform:uppercase;transition:background .2s,transform .12s;
+  }
+  button:hover{background:rgba(0,255,170,.24)}
+  button:active{transform:scale(.98)}
+
+  .errore{display:none;margin:0 0 16px;padding:11px 13px;border-radius:10px;
+    border:1px solid rgba(255,75,75,.45);background:rgba(255,75,75,.12);
+    color:var(--red);font-size:10.5px;letter-spacing:.08em;line-height:1.5}
+  .errore.vis{display:block}
+
+  .piede{margin:22px 0 0;text-align:center;font-size:9px;letter-spacing:.16em;
+    color:var(--fg-3)}
+  .piede b{color:var(--fg-2);font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="box">
+  <div class="reattore">
+    <div class="anello"></div><div class="anello"></div><div class="anello"></div>
+    <div class="nucleo"></div>
+  </div>
+
+  <h1>J.A.R.V.I.S<span class="punto">.</span></h1>
+  <p class="sub">AcrylicSpider · accesso</p>
+
+  <form method="post" action="/login" autocomplete="on">
+    <div class="errore" id="errore"></div>
+
+    <label for="utente">utente</label>
+    <input id="utente" name="utente" type="text" autocapitalize="off"
+           autocorrect="off" spellcheck="false" required autofocus>
+
+    <label for="password">password</label>
+    <input id="password" name="password" type="password" required>
+
+    <input type="hidden" name="next" id="next" value="">
+
+    <button type="submit">Accedi</button>
+  </form>
+
+  <p class="piede">sessione <b>30 giorni</b> · cookie firmato</p>
+</div>
+
+<script>
+(function () {
+  var p = new URLSearchParams(location.search);
+
+  // riporta l'utente alla pagina che aveva chiesto
+  var next = p.get("next") || "";
+  document.getElementById("next").value = next;
+
+  var e = p.get("errore");
+  var box = document.getElementById("errore");
+  if (e === "attendi") {
+    box.textContent = "Troppi tentativi. Aspetta 30 secondi e riprova.";
+    box.classList.add("vis");
+  } else if (e) {
+    box.textContent = "Credenziali non valide. Riprova.";
+    box.classList.add("vis");
+  }
+})();
+</script>
+</body>
+</html>
