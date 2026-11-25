@@ -111,9 +111,15 @@ def _basic_valida():
 
 def _richiede_auth(percorso):
     """False per le poche cose che devono restare raggiungibili senza login."""
-    return (percorso not in ('/login', '/logout')
-            and not percorso.startswith('/js/')
-            and not percorso.startswith('/favicon'))
+    # Cose che devono restare raggiungibili senza sessione: la pagina di
+    # login, e gli asset che i browser chiedono da soli (manifest, service
+    # worker, icone, anime.js).
+    if percorso in ('/login', '/logout', '/manifest.json', '/sw.js'):
+        return False
+    for prefisso in ('/js/', '/favicon', '/icon-'):
+        if percorso.startswith(prefisso):
+            return False
+    return True
 
 
 @app.before_request
@@ -304,6 +310,15 @@ def api_livella():
         return jsonify({'ok': False, 'messaggio': str(e)}), 500
     finally:
         comandi.LOCK.release()
+
+
+@app.route('/api/luci', methods=['POST'])
+def api_luci():
+    """Colore e modalità delle strisce WS2812."""
+    d = request.get_json(silent=True) or {}
+    ok, messaggio = comandi.luci(d.get('r', 0), d.get('g', 0), d.get('b', 0),
+                                 d.get('modo', 'fisso'), d.get('luminosita'))
+    return jsonify({'ok': ok, 'messaggio': messaggio}), (200 if ok else 409)
 
 
 @app.route('/api/imu')

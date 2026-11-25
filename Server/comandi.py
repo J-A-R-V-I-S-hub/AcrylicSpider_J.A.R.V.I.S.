@@ -230,6 +230,52 @@ def ferma():
     return True, "fermato"
 
 
+def luci(r=0, g=0, b=0, modo='fisso', luminosita=None):
+    """Controlla le strisce WS2812: colore fisso e modalità animate.
+
+    `pause()` ferma il ciclo di animazione in corso (respiro/polizia) prima
+    di scrivere un colore fisso: senza, il frame successivo lo sovrascriverebbe.
+    """
+    if _led is None:
+        return False, "strisce non disponibili"
+
+    def clamp(v):
+        try:
+            return max(0, min(255, int(v)))
+        except Exception:
+            return 0
+
+    r, g, b = clamp(r), clamp(g), clamp(b)
+
+    try:
+        if luminosita is not None:
+            _led.set_led_brightness(clamp(float(luminosita) * 255 / 100.0))
+
+        if modo == 'fisso':
+            _led.pause()
+            time.sleep(0.15)      # lascia che l'animazione esca dal suo ciclo
+            _led.set_all_led_color(r, g, b)
+            _led.show()
+        elif modo == 'respiro':
+            _led.breath(r, g, b)
+        elif modo == 'polizia':
+            _led.police()
+        elif modo == 'flusso':
+            _led.flowing(r, g, b)
+        elif modo == 'arcobaleno':
+            _led.rainbow()
+        elif modo == 'spento':
+            _led.pause()
+            time.sleep(0.15)
+            _led.set_all_led_color(0, 0, 0)
+            _led.show()
+        else:
+            return False, "modo sconosciuto: %s" % modo
+        return True, "luci: " + modo
+    except Exception as e:
+        return False, "errore luci: %s" % e
+
+
 def elenco():
     """Nomi delle mosse disponibili (per il pannello e per i test)."""
     return sorted(MOSSE)

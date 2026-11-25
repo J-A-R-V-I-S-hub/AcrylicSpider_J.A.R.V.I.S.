@@ -7,6 +7,7 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/manifest.json">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -885,27 +886,105 @@ function pianificaImu(){
 leggiImu();
 pianificaImu();
 
-/* ══════════ luci ══════════ *//* ══════════ luci ══════════ */
+/* ══════════ PWA e schermo sempre acceso ══════════ */
+// Service worker: serve solo a rendere la pagina installabile (non cachea nulla)
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+}
+
+// Wake lock: il telefono non spegne lo schermo mentre guidi.
+// Safari iOS non lo supporta: in quel caso resta spento senza errori.
+let blocchettoSchermo = null;
+async function tieniSchermoAcceso(){
+  if (!("wakeLock" in navigator)) return;
+  try {
+    blocchettoSchermo = await navigator.wakeLock.request("screen");
+    blocchettoSchermo.addEventListener("release", () => { blocchettoSchermo = null; });
+  } catch (e) { /* permesso negato o batteria scarica */ }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && !blocchettoSchermo) tieniSchermoAcceso();
+});
+tieniSchermoAcceso();
+
+/* ══════════ luci ══════════ */
 function costruisciLuci(contenitore){
+  // ── colore e luminosità ──
+  const riga = document.createElement("div");
+  riga.className = "riga";
+  riga.style.flexWrap = "wrap";
+  riga.innerHTML =
+    '<input type="color" id="luci-colore" value="#00ffaa" ' +
+      'style="width:56px;height:36px;border:none;background:none;padding:0;cursor:pointer">' +
+    '<input type="range" id="luci-lum" min="5" max="100" value="65" ' +
+      'style="flex:1;min-width:120px;accent-color:var(--accent)">' +
+    '<span class="lab" id="luci-lum-val" style="min-width:38px">65%</span>';
+  contenitore.appendChild(riga);
+
+  const lum = riga.querySelector("#luci-lum");
+  const lumVal = riga.querySelector("#luci-lum-val");
+  lum.addEventListener("input", () => { lumVal.textContent = lum.value + "%"; });
+
+  // ── modalità ──
   const g = document.createElement("div");
   g.className = "griglia";
-  [["police","Polizia","🚨"],["policeOff","Riposo","💤"],
-   ["Switch_1_on","Switch 1 on","1"],["Switch_1_off","Switch 1 off","1"],
-   ["Switch_2_on","Switch 2 on","2"],["Switch_2_off","Switch 2 off","2"],
-   ["Switch_3_on","Switch 3 on","3"],["Switch_3_off","Switch 3 off","3"]]
-  .forEach(([c,n,i]) => {
+  [
+    ["fisso", "Colore fisso", "🎨"],
+    ["respiro", "Respiro", "🫧"],
+    ["flusso", "Flusso", "🌊"],
+    ["arcobaleno", "Arcobaleno", "🌈"],
+    ["spento", "Spente", "⚫"]
+  ].forEach(([modo, etichetta, icona]) => {
+    const b = document.createElement("button");
+    b.className = "mossa";
+    b.innerHTML = `<span class="ic">${icona}</span><span>${etichetta}</span>`;
+    b.addEventListener("click", () => applicaLuci(modo, b));
+    g.appendChild(b);
+  });
+  contenitore.appendChild(g);
+
+  // ── comandi originali ──
+  const g2 = document.createElement("div");
+  g2.className = "griglia";
+  g2.style.marginTop = "14px";
+  [["police", "Polizia", "🚨"], ["policeOff", "Riposo", "💤"],
+   ["Switch_1_on", "Switch 1 on", "1"], ["Switch_1_off", "Switch 1 off", "1"],
+   ["Switch_2_on", "Switch 2 on", "2"], ["Switch_2_off", "Switch 2 off", "2"],
+   ["Switch_3_on", "Switch 3 on", "3"], ["Switch_3_off", "Switch 3 off", "3"]]
+  .forEach(([c, n, i]) => {
     const b = document.createElement("button");
     b.className = "mossa";
     b.innerHTML = `<span class="ic">${i}</span><span>${n}</span>`;
     b.addEventListener("click", () => { cmd(c); if (navigator.vibrate) navigator.vibrate(8); });
-    g.appendChild(b);
+    g2.appendChild(b);
   });
-  contenitore.appendChild(g);
+  contenitore.appendChild(g2);
+
   const n = document.createElement("p");
   n.className = "nota";
-  n.textContent = "I tre Switch comandano le strisce LED WS2812 e il LED frontale " +
-                  "in modo indipendente, come sul pannello originale.";
+  n.textContent = "Il colore vale per entrambe le strisce WS2812 (16 LED). " +
+    "«Respiro» pulsa nel colore scelto, «Flusso» lo fa scorrere, " +
+    "«Arcobaleno» ruota su tutti i colori. La luminosità si applica subito.";
   contenitore.appendChild(n);
+}
+
+async function applicaLuci(modo, bottone){
+  const colore = document.getElementById("luci-colore");
+  const lum = document.getElementById("luci-lum");
+  if (!colore) return;
+  const hex = colore.value;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  if (bottone) anime({ targets: bottone, scale: [1, .93, 1], duration: 260, easing: "easeOutQuad" });
+  if (navigator.vibrate) navigator.vibrate(10);
+  try {
+    await fetch("/api/luci", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ r: r, g: g, b: b, modo: modo, luminosita: Number(lum.value) })
+    });
+  } catch (e) {}
 }
 
 /* ══════════ sistema ══════════ */
@@ -970,29 +1049,6 @@ async function caricaSistema(){
       if (c) c.textContent = d.telemetria.cpu;
     }
   } catch (e) {}
-}
-
-/* ══════════ luci ══════════ */
-function costruisciLuci(contenitore){
-  const g = document.createElement("div");
-  g.className = "griglia";
-  [["police","Polizia","🚨"],["policeOff","Riposo","💤"],
-   ["Switch_1_on","Switch 1 on","1"],["Switch_1_off","Switch 1 off","1"],
-   ["Switch_2_on","Switch 2 on","2"],["Switch_2_off","Switch 2 off","2"],
-   ["Switch_3_on","Switch 3 on","3"],["Switch_3_off","Switch 3 off","3"]]
-  .forEach(([c,n,i]) => {
-    const b = document.createElement("button");
-    b.className = "mossa";
-    b.innerHTML = `<span class="ic">${i}</span><span>${n}</span>`;
-    b.addEventListener("click", () => { cmd(c); if (navigator.vibrate) navigator.vibrate(8); });
-    g.appendChild(b);
-  });
-  contenitore.appendChild(g);
-  const n = document.createElement("p");
-  n.className = "nota";
-  n.textContent = "I tre Switch comandano le strisce LED WS2812 e il LED frontale " +
-                  "in modo indipendente, come sul pannello originale.";
-  contenitore.appendChild(n);
 }
 
 /* ══════════ avanzi: trim servi ══════════ */
