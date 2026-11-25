@@ -806,7 +806,9 @@ function posizionaPunto(contenitore, punto, fondo){
   const lato = contenitore.getBoundingClientRect().width || 200;
   const raggio = lato / 2 - lato * 0.07;
   const dx = Math.max(-1, Math.min(1, imuOra.roll / fondo)) * raggio;
-  const dy = Math.max(-1, Math.min(1, imuOra.pitch / fondo)) * raggio;
+  // verticale invertita di proposito: muso in SU = puntino in alto.
+  // In prima persona è più intuitivo: la bolla sale dove sale il ragno.
+  const dy = -Math.max(-1, Math.min(1, imuOra.pitch / fondo)) * raggio;
   punto.style.transform = `translate(${dx}px, ${dy}px)`;
   punto.classList.toggle("allarme", imuOra.tot > 18);
 }
