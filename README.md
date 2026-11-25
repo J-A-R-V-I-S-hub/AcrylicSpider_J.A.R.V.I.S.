@@ -63,10 +63,10 @@ Tutto il movimento avviene **sul posto**: le diagonali lavorano sempre in opposi
 | 🕷️ **Locomozione** | 12 servi, passo sul posto, diagonali opposte, inclinazioni, allungo zampe |
 | 🎥 **Visione** | Streaming MJPEG, inseguimento colore (OpenCV) con scelta della tinta |
 | 🧭 **Sensori** | IMU MPU-6050, livellatura automatica a fine mossa |
-| 🌈 **Luci** | Strisce WS2812 (respiro, polizia) + LED frontale e 3 switch |
-| 🌐 **Controllo** | Pannello web da LAN e telefono, 23 mosse in loop, joystick e tastiera |
+| 🌈 **Luci** | Strisce WS2812 a **colore libero** (fisso, respiro, flusso, arcobaleno) + LED frontale e 3 switch |
+| 🌐 **Controllo** | Pannello web da LAN e telefono, 25 mosse in loop, joystick e tastiera |
 | 📊 **Telemetria** | Temperatura, carico, RAM, disco, rete — aggiornati ogni 5 s |
-| 🤖 **HRI** | Routine da **25,6 s** all'avvio e **ogni ora**, con posa finale |
+| 🤖 **HRI** | Routine da **~26 s** all'avvio e **ogni ora**, con posa finale |
 
 ---
 
@@ -97,13 +97,20 @@ Una sola pagina a schermo pieno, pensata prima per il telefono:
 
 | Linguetta | Contenuto |
 |---|---|
-| **Mosse** | 23 mosse in loop: onda larga, cascata, petalo, torsione, scalini, ventaglio, saluto, passo, posa finale… |
-| **Luci** | Polizia, riposo, i tre switch, reset CV |
+| **Mosse** | 25 mosse in loop: onda larga, cascata, onda lenta, respiro, petalo, torsione, scalini, ventaglio, saluto, passo, posa finale… |
+| **Luci** | **colore libero + luminosità** su tutte le strisce, con modalità fisso / respiro / flusso / arcobaleno; più polizia, riposo e i tre switch |
 | **Visione** | 8 tinte pronte + selettore libero per l'inseguimento colore |
 | **Info** | scheda stile neofetch: hardware, sistema, rete + barre RAM/disco/temp/swap |
+| **Assetto** | bolla IMU live: roll, pitch, inclinazione e pulsante **Livella** |
 | **Trim** | calibrazione dei 12 servi con contatore e reset |
 
 **Come funziona il loop:** schiacci una mossa e si ripete; rischiacci e si ferma. Se ne premi un'altra mentre gira, cambia al volo. Il pulsante **STOP LOOP** compare solo quando serve.
+
+**Installabile come app (PWA).** Dal browser del telefono: *Aggiungi alla schermata Home*.
+Si apre a schermo intero, con l'icona del reattore, e attiva il **wake lock**: mentre la
+pagina è visibile lo schermo non si spegne (su Safari iOS il wake lock non è supportato
+e viene semplicemente ignorato). Il service worker **non mette nulla in cache**: camera,
+assetto e comandi devono essere sempre letti dal vivo.
 
 ---
 
@@ -133,7 +140,7 @@ COMANDI_PASS=...
 
 ---
 
-## `//` Routine di risveglio — 25,6 secondi
+## `//` Routine di risveglio — circa 26 secondi
 
 All'accensione e allo scatto di ogni ora:
 
@@ -141,7 +148,7 @@ All'accensione e allo scatto di ogni ora:
 1. apertura ................. dondolio laterale
 2. onda larga ............... le 4 punte, ±200, sfalsate
 3. altalena + scatto ........ petalo, poi passo sul posto
-4. onde + colpo ............. avanti, indietro, accento secco
+4. onde + onda lenta ........ avanti, indietro, poi onda che gira
 5. muso su / muso giù ....... impennata e inchino
 6. scalini .................. il corpo sale a tre gradini
 7. cascata .................. le 4 zampe in sequenza, ±200
@@ -149,6 +156,9 @@ All'accensione e allo scatto di ogni ora:
 ```
 
 Durante la sequenza: **strisce in modalità polizia**, **LED frontale acceso**; alla fine frontale spento e strisce in respiro lento.
+
+La durata effettiva varia fra **25 e 27 secondi** secondo quanto ci mette la livellatura
+a metà sequenza: `livella()` legge l'IMU e corregge finché il corpo è in piano.
 
 Parametri in `Server/wakeup.py`:
 
@@ -166,6 +176,32 @@ FINALE_ROLL    = 0.0     # nessuna inclinazione laterale
 > **Perché `SERVO_FRAME = 0.020` e non meno:** il PCA9685 rigenera le uscite a 50 Hz.
 > Scrivendo più spesso le scritture cadono a metà frame, vengono accorpate e si vedono
 > degli scatti. Un passo per frame è fluido.
+
+---
+
+## `//` API
+
+Il pannello parla con il robot attraverso queste rotte, tutte protette dalla sessione
+(o dalla Basic auth per gli script):
+
+| Rotta | Metodo | Cosa fa |
+|---|---|---|
+| `/api/imu` | GET | assetto: `roll`, `pitch`, `inclinazione` (offset già applicato) |
+| `/api/livella` | POST | mette il corpo in piano muovendo i servi centrali |
+| `/api/sistema` | GET | dati della scheda Info, divisi in gruppi + misure per le barre |
+| `/api/luci` | POST | `{r,g,b,modo,luminosita}` per le strisce |
+| `/api/comandi` | GET | stato: `occupato`, `loop`, ultima mossa ed esito |
+| `/api/comando/<nome>` | POST | avvia o ferma una mossa (interruttore) |
+| `/api/comando/stop` | POST | ferma qualsiasi loop |
+
+Esempio:
+
+```bash
+curl -u utente:password http://<ip-del-pi>:5000/api/imu
+curl -u utente:password -X POST -H 'Content-Type: application/json' \
+     -d '{"r":0,"g":255,"b":170,"modo":"fisso","luminosita":70}' \
+     http://<ip-del-pi>:5000/api/luci
+```
 
 ---
 
@@ -196,6 +232,7 @@ Server/              web server, servi, luci, camera, routine
   hourly.py          timer dell'esibizione oraria
   comandi.py         comandi manuali + loop, lucchetto condiviso
   sistema.py         lettura dati di sistema per la scheda Info
+  imu.py             assetto (roll/pitch) e offset di montaggio del sensore
   app.py             Flask, API, login e sessione
   WebServer.py       avvio, WebSocket :8888, luci
   RobotLight.py      driver WS2812 (rpi_ws281x, GPIO12)
@@ -204,6 +241,7 @@ Server/              web server, servi, luci, camera, routine
   .env               credenziali (NON committare)
   .env.example       modello senza segreti
   dist/              pannello /jarvis, /login, anime.js locale
+  dist/manifest.json + sw.js + icon-*.png   PWA installabile
 Examples/            script di test per ogni componente
 Client/              app desktop opzionale
 ```
