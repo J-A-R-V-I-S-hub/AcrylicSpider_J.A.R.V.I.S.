@@ -249,7 +249,7 @@ def sweep_all(names=None, amp=None, step=None, stagger=None):
     _glide_staggered(giu, stagger, step)
     time.sleep(0.08)
     _glide_staggered(base, stagger, step)
-    livella()
+    livella(passi=2)
 
 
 def _una_zampa(base, punta, verso, lift, amp, hold):
@@ -346,7 +346,7 @@ def battito(colpi=2, amp=30, hold=0.06):
     _reach(_neutral())
 
 
-def onda_lenta(amp=70, periodi=2.0, durata=3.2, fps=20, ordine=None):
+def onda_lenta(amp=70, periodi=2.0, durata=2.5, fps=20, ordine=None):
     """Onda fluida: le quattro punte seguono una sinusoide sfasata.
 
     Non è una sequenza di scatti: ogni zampa è a un punto diverso della stessa
@@ -502,7 +502,7 @@ def sweep_cascade(order=None, amp=None, stagger=None, step=None, frame=None,
     _glide_staggered(su, stagger, step, frame)
     _glide_staggered(giu, stagger, step, frame)
     _glide_staggered(base, stagger, step, frame)
-    livella()
+    livella(passi=2)
 
 
 def wave(reverse=False):
@@ -610,10 +610,11 @@ def run(led=None):
     petalo(hold=0.20, amp=55)
     scuttle(cycles=1)
 
-    # ══ 4 · onda avanti e indietro, poi colpo secco ══════════
+    # ══ 4 · onde veloci, poi onda lenta che gira attorno al corpo ══
     wave()
     wave(reverse=True)
-    battito(colpi=1, amp=28)
+    time.sleep(0.05)
+    onda_lenta()
 
     # ══ 5 · muso su e giù ════════════════════════════════════
     nose_up(hold=0.30)
