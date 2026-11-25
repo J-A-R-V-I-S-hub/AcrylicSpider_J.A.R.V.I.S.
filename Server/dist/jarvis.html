@@ -871,8 +871,17 @@ function costruisciAssetto(contenitore){
   aggiornaBolle();
 }
 
-setInterval(leggiImu, 200);
+// Polling adattivo: 150 ms quando la bolla grande è aperta, 600 ms quando
+// serve solo il pallino nella HUD. Riduce di 3 volte le richieste a riposo.
+let timerImu = null;
+function pianificaImu(){
+  clearTimeout(timerImu);
+  const attivo = !!document.getElementById("bolla");
+  timerImu = setTimeout(async () => { await leggiImu(); pianificaImu(); },
+                        attivo ? 150 : 600);
+}
 leggiImu();
+pianificaImu();
 
 /* ══════════ luci ══════════ *//* ══════════ luci ══════════ */
 function costruisciLuci(contenitore){

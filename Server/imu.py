@@ -17,6 +17,18 @@ import math
 
 import SpiderG
 
+# ── OFFSET DI MONTAGGIO ─────────────────────────────────────
+# Misurato con il ragno in posa neutra (pose 0,0,0, servi a 300).
+#
+# Storia utile: la prima misura dava -4,7° / -5,0°. Sembrava il sensore
+# montato storto, invece erano VITI ALLENTATE del telaio: dopo averle
+# strette il grezzo è sceso a -0,3° / -2,7°. Il residuo di roll è il
+# pavimento leggermente fuori bolla, non il montaggio.
+#
+# Per ricalibrare: posa neutra, leggi /api/imu e metti qui l'opposto.
+OFFSET_PITCH = 0.3
+OFFSET_ROLL = 2.7
+
 
 def disponibile():
     return bool(getattr(SpiderG, 'MPU_connection', 0)) and \
@@ -42,9 +54,12 @@ def leggi():
     # Quindi il "pitch" (muso su/giù) si ricava da x e il "roll" (lato) da y.
     # Nella prima versione erano invertiti: la bolla si muoveva sull'asse
     # sbagliato.
-    pitch = math.degrees(math.atan2(x, math.sqrt(y * y + z * z)))
-    roll = math.degrees(math.atan2(y, math.sqrt(x * x + z * z)))
-    inclinazione = math.degrees(math.acos(max(-1.0, min(1.0, z / max(0.001, math.sqrt(x*x + y*y + z*z))))))
+    pitch = math.degrees(math.atan2(x, math.sqrt(y * y + z * z))) + OFFSET_PITCH
+    roll = math.degrees(math.atan2(y, math.sqrt(x * x + z * z))) + OFFSET_ROLL
+    # inclinazione totale ricavata dagli angoli corretti (non dal solo z,
+    # altrimenti l'offset di montaggio falserebbe anche questa)
+    inclinazione = math.degrees(math.acos(max(-1.0, min(1.0,
+        math.cos(math.radians(pitch)) * math.cos(math.radians(roll))))))
 
     return {
         'ok': True,

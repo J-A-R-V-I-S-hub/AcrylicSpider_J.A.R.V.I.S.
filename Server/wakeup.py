@@ -149,42 +149,37 @@ def posa_finale(pitch=None, roll=None, hold=0.10):
 
 
 def livella(passi=4, tolleranza_gradi=1.5):
-    """Riporta il corpo in piano leggendo l'accelerometro.
+    """Riporta il corpo in piano leggendo l'assetto già corretto.
 
-    Due cose che il codice Adeept dava per scontate e qui non valgono:
-      1. gli assi sono montati ruotati: x = avanti/indietro, y = destra/sinistra
-      2. il MPU-6050 restituisce m/s² (z ≈ 9.8), non g: va normalizzato,
-         altrimenti la correzione satura subito
+    Usa imu.leggi(), che applica l'offset di montaggio del sensore: senza
+    quello, "in piano" significava in realtà inclinato di 5°.
 
-    La correzione è proporzionale all'angolo residuo e si ripete: così converge
-    invece di dare un colpo solo.
+    La correzione è proporzionale all'errore e si ripete, così converge.
+    Il fattore 25 viene dalle misure statiche: 1 unità di posa inclina il
+    corpo di circa 13-20°, quindi 25 è prudente e converge in 2-3 passi.
     """
+    try:
+        import imu
+    except Exception:
+        return
     if not getattr(SpiderG, 'MPU_connection', 0):
         return
 
-    # 0.45 unità di posa corrispondono a circa 11° misurati sul robot:
-    # da qui il guadagno K ≈ 2.3, che riporta l'angolo in unità di posa.
-    K = 2.3
     pitch = 0.0
     roll = 0.0
-
     for _ in range(max(1, passi)):
-        try:
-            d = SpiderG.sensor.get_accel_data()
-            x, y, z = float(d['x']), float(d['y']), float(d['z'])
-        except Exception as e:
-            print("wakeup: livella non disponibile:", e, flush=True)
+        d = imu.leggi()
+        if not d.get('ok'):
             return
+        errore_pitch = d['pitch']     # positivo = muso in su
+        errore_roll = d['roll']
 
-        scala = max(1.0, abs(z))
-        ax = x / scala          # avanti/indietro (radianti circa)
-        ay = y / scala          # sinistra/destra
-
-        if abs(ax) * 57.3 < tolleranza_gradi and abs(ay) * 57.3 < tolleranza_gradi:
+        if abs(errore_pitch) < tolleranza_gradi and abs(errore_roll) < tolleranza_gradi:
             break
 
-        pitch = max(-0.6, min(0.6, pitch + ax * K))
-        roll = max(-0.6, min(0.6, roll + ay * K))
+        # muso in su → serve una posa con pitch positivo (muso in giù)
+        pitch = max(-0.6, min(0.6, pitch + errore_pitch / 25.0))
+        roll = max(-0.6, min(0.6, roll + errore_roll / 25.0))
         SpiderG.status_GenOut(0, pitch, roll)
         _reach(dict(SpiderG.goal_dict))
         time.sleep(0.12)
@@ -569,6 +564,9 @@ def run(led=None):
     # ══ 5 · muso su e giù ════════════════════════════════════
     nose_up(hold=0.30)
     nose_down(hold=0.30)
+
+    # ══ 5b · scalini: il corpo sale a tre gradini e scende ══
+    scalini(hold=0.26)
 
     # ══ 6 · cascata, fondo scala ═════════════════════════════
     sweep_cascade()

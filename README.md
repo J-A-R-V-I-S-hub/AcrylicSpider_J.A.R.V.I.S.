@@ -66,7 +66,7 @@ Tutto il movimento avviene **sul posto**: le diagonali lavorano sempre in opposi
 | 🌈 **Luci** | Strisce WS2812 (respiro, polizia) + LED frontale e 3 switch |
 | 🌐 **Controllo** | Pannello web da LAN e telefono, 23 mosse in loop, joystick e tastiera |
 | 📊 **Telemetria** | Temperatura, carico, RAM, disco, rete — aggiornati ogni 5 s |
-| 🤖 **HRI** | Routine da **25 s** all'avvio e **ogni ora**, con posa finale |
+| 🤖 **HRI** | Routine da **25,6 s** all'avvio e **ogni ora**, con posa finale |
 
 ---
 
@@ -133,7 +133,7 @@ COMANDI_PASS=...
 
 ---
 
-## `//` Routine di risveglio — 25 secondi
+## `//` Routine di risveglio — 25,6 secondi
 
 All'accensione e allo scatto di ogni ora:
 
@@ -143,8 +143,9 @@ All'accensione e allo scatto di ogni ora:
 3. altalena + scatto ........ petalo, poi passo sul posto
 4. onde + colpo ............. avanti, indietro, accento secco
 5. muso su / muso giù ....... impennata e inchino
-6. cascata .................. le 4 zampe in sequenza, ±200
-7. chiusura ................. dondolio → posa finale muso in giù
+6. scalini .................. il corpo sale a tre gradini
+7. cascata .................. le 4 zampe in sequenza, ±200
+8. chiusura ................. dondolio → posa finale muso in giù
 ```
 
 Durante la sequenza: **strisce in modalità polizia**, **LED frontale acceso**; alla fine frontale spento e strisce in respiro lento.
@@ -305,6 +306,41 @@ Il codice Adeept V3 è scritto per una revisione più recente della HAT. Su ques
 | Luci 1/2/3 | GPIO 9, 25, 11 | **GPIO 5, 6, 13** |
 
 Senza questi adattamenti: i servi vanno in `OSError [Errno 5]` all'avvio, le strisce non si accendono e le luci risultano "disabilitate" per conflitto con lo SPI.
+
+---
+
+## `//` Calibrazione dell'assetto
+
+Le ampiezze non sono scelte a caso: sono state **misurate** con l'IMU,
+applicando una posa statica e leggendo l'inclinazione reale.
+
+| Comando | Effetto reale sul corpo |
+|---|---|
+| `pose(pitch +0.55)` | muso in giù **8°** |
+| `pose(pitch -0.55)` | muso in su **11,6°** |
+| `pose(roll +0.55)` | inclinazione laterale **5°** |
+| `pose(height 120)` | corpo più alto, resta in piano (±2°) |
+
+Tre conseguenze importanti:
+
+- **il pitch ha più corsa del roll**: il muso arriva a 11,6° mentre il
+  dondolio laterale si ferma a 5°, perché i servi centrali hanno poca leva
+  sul roll. Per questo la coreografia alterna molto il muso e poco il lato
+- **oltre 0,75 la posa satura**: il corpo non si inclina di più e i servi
+  iniziano a spingere contro il fermo. La routine usa 0,55 × `GAIN 1.35`
+  = **0,74**, cioè il 95% della corsa disponibile
+- **il roll satura già a 0,55**: insistere non dà nulla in più
+
+### L'offset del sensore
+
+`imu.py` applica un piccolo offset di montaggio, misurato con il ragno in
+posa neutra. Vale la pena sapere com'è nato: la prima misura dava −4,7°/−5,0°
+e sembrava il sensore storto, invece erano **viti allentate del telaio**.
+Dopo averle strette il valore è sceso a −0,3°/−2,7°: il residuo è il
+pavimento leggermente fuori bolla.
+
+Senza questo offset la bolla resterebbe sbilenca e, peggio, `livella()`
+inclinerebbe *davvero* il corpo per portare una lettura sbagliata a zero.
 
 ---
 
