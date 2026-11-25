@@ -116,12 +116,24 @@
   #badgeArma.on{border-color:var(--turquoise);color:var(--turquoise)}
 
   /* telemetria in sovrimpressione */
-  #hud{position:absolute;top:10px;right:12px;z-index:5;display:flex;gap:16px;
+  #hud{position:absolute;top:10px;right:12px;z-index:5;display:flex;align-items:center;gap:16px;
     padding:7px 12px;border-radius:9px;font-size:10px;letter-spacing:.14em;
     background:rgba(37,36,35,.62);border:1px solid rgba(246,244,242,.12);
     backdrop-filter:blur(10px);pointer-events:none;color:var(--fg-3)}
   #hud b{color:var(--turquoise);font-weight:600;letter-spacing:.06em}
-  @media(max-width:520px){#hud{display:none}}
+  .mini-bolla{position:relative;width:34px;height:34px;flex:0 0 auto;border-radius:50%;
+    border:1px solid rgba(246,244,242,.18);
+    background:radial-gradient(circle at 50% 42%, #2f2c2a, #1b1a19 70%);
+    box-shadow:inset 0 0 12px rgba(0,0,0,.65)}
+  .mini-bolla i{position:absolute;left:50%;top:50%;width:10px;height:10px;
+    margin:-5px 0 0 -5px;border-radius:50%;background:var(--turquoise);
+    box-shadow:0 0 9px var(--turquoise);transition:transform .12s linear}
+  .mini-bolla i.allarme{background:var(--corail);box-shadow:0 0 9px var(--corail)}
+  @media(max-width:520px){#hud{gap:10px;font-size:9px}.mini-bolla{width:28px;height:28px}}
+  /* sotto i 620px la telemetria sta in alto a destra: il badge scende per non sovrapporsi */
+  @media(max-width:620px){
+    #badgeArma{top:52px;font-size:8px;padding:5px 12px;letter-spacing:.14em}
+  }
 
   /* ───────── overlay comandi ───────── */
   .overlay{position:absolute;left:0;right:0;bottom:0;z-index:4;
@@ -361,6 +373,7 @@
   <div id="hud">
     <span>TEMP <b id="h-temp">–</b></span>
     <span>LOAD <b id="h-cpu">–</b></span>
+    <div class="mini-bolla" id="mini-bolla" title="assetto"><i id="mini-punto"></i></div>
   </div>
 
   <div class="overlay">
@@ -772,9 +785,47 @@ function costruisciVisione(contenitore){
 }
 
 /* ══════════ assetto (bolla IMU) ══════════ */
-let timerImu = null;
-let imuRif = { roll: 0, pitch: 0 };
-let imuUltimo = { roll: 0, pitch: 0 };
+// Un solo polling per tutta la pagina: alimenta la bolla grande della scheda
+// e quella piccola nella HUD della telecamera.
+const imuOra = { roll: 0, pitch: 0, tot: 0 };
+
+async function leggiImu(){
+  try {
+    const r = await fetch("/api/imu", { cache: "no-store" });
+    const d = await r.json();
+    if (!d.ok) return;
+    imuOra.roll = d.roll;
+    imuOra.pitch = d.pitch;
+    imuOra.tot = d.inclinazione;
+    aggiornaBolle();
+  } catch (e) { /* rete momentanea */ }
+}
+
+function posizionaPunto(contenitore, punto, fondo){
+  if (!contenitore || !punto) return;
+  const lato = contenitore.getBoundingClientRect().width || 200;
+  const raggio = lato / 2 - lato * 0.07;
+  const dx = Math.max(-1, Math.min(1, imuOra.roll / fondo)) * raggio;
+  const dy = Math.max(-1, Math.min(1, imuOra.pitch / fondo)) * raggio;
+  punto.style.transform = `translate(${dx}px, ${dy}px)`;
+  punto.classList.toggle("allarme", imuOra.tot > 18);
+}
+
+function aggiornaBolle(){
+  // bolla grande (scheda Assetto): 24° al bordo
+  posizionaPunto(document.getElementById("bolla"),
+                 document.getElementById("bolla-punto"), 24);
+  // bolla piccola (HUD): stesso criterio, spazio ridotto
+  posizionaPunto(document.getElementById("mini-bolla"),
+                 document.getElementById("mini-punto"), 24);
+
+  const er = document.getElementById("imu-roll");
+  if (er){
+    er.textContent = imuOra.roll.toFixed(1) + "°";
+    document.getElementById("imu-pitch").textContent = imuOra.pitch.toFixed(1) + "°";
+    document.getElementById("imu-tot").textContent = imuOra.tot.toFixed(1) + "°";
+  }
+}
 
 function costruisciAssetto(contenitore){
   contenitore.innerHTML =
@@ -790,59 +841,38 @@ function costruisciAssetto(contenitore){
       '<div><div class="val" id="imu-tot">–</div><div class="lab">inclinazione</div></div>' +
     '</div>' +
     '<div class="riga" style="justify-content:center;margin-top:14px">' +
-      '<button class="mossa" id="imu-zero" style="flex-direction:row;gap:8px;padding:11px 18px">' +
-        '<span class="ic">⦵</span><span>Azzera qui</span></button>' +
+      '<button class="mossa" id="imu-livella" style="flex-direction:row;gap:8px;padding:11px 18px">' +
+        '<span class="ic">⚖</span><span>Livella</span></button>' +
     '</div>' +
     '<p class="nota">La bolla mostra l\'inclinazione reale del corpo rispetto alla gravità. ' +
-      'I cerchi sono a 10° e 20°: se il puntino esce dal secondo, il ragno è molto inclinato. ' +
-      '«Azzera qui» prende la posa attuale come riferimento, utile se il tavolo non è in bolla. ' +
-      'Durante i movimenti bruschi il puntino oscilla: è normale, legge anche l\'accelerazione.</p>' + '</div>';
+      'I cerchi sono a 10° e 20°. «Livella» muove i quattro servi centrali per rimettere ' +
+      'il corpo in piano, come fa la fine della coreografia. Durante i movimenti bruschi ' +
+      'il puntino oscilla: è normale, l\'accelerometro legge anche l\'accelerazione.</p>' +
+    '</div>';
 
-  document.getElementById("imu-zero").addEventListener("click", () => {
-    imuRif.roll = imuUltimo.roll;
-    imuRif.pitch = imuUltimo.pitch;
+  document.getElementById("imu-livella").addEventListener("click", async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true;
+    const testo = b.querySelector("span:last-child");
+    testo.textContent = "livello…";
+    try {
+      const r = await fetch("/api/livella", { method: "POST" });
+      const d = await r.json();
+      testo.textContent = d.ok ? "livellato" : "occupato";
+    } catch (err) {
+      testo.textContent = "errore";
+    }
+    setTimeout(() => { testo.textContent = "Livella"; b.disabled = false; }, 1400);
     leggiImu();
   });
 
-  clearInterval(timerImu);
-  timerImu = setInterval(leggiImu, 100);
-  leggiImu();
+  aggiornaBolle();
 }
 
-async function leggiImu(){
-  if (!document.getElementById("bolla")) { clearInterval(timerImu); timerImu = null; return; }
-  try {
-    const r = await fetch("/api/imu", { cache: "no-store" });
-    const d = await r.json();
-    if (!d.ok) return;
-    imuUltimo.roll = d.roll;
-    imuUltimo.pitch = d.pitch;
-    aggiornaBolla(d.roll - imuRif.roll, d.pitch - imuRif.pitch, d.inclinazione);
-  } catch (e) { /* rete momentanea */ }
-}
+setInterval(leggiImu, 200);
+leggiImu();
 
-function aggiornaBolla(roll, pitch, tot){
-  const bolla = document.getElementById("bolla");
-  const punto = document.getElementById("bolla-punto");
-  if (!bolla || !punto) return;
-
-  const lato = bolla.getBoundingClientRect().width || 220;
-  const raggio = lato / 2 - 16;
-  const fondo = 24;                       // gradi corrispondenti al bordo
-  const dx = Math.max(-1, Math.min(1, roll / fondo)) * raggio;
-  const dy = Math.max(-1, Math.min(1, pitch / fondo)) * raggio;
-  punto.style.transform = `translate(${dx}px, ${dy}px)`;
-  punto.classList.toggle("allarme", tot > 18);
-
-  const er = document.getElementById("imu-roll");
-  if (er) {
-    er.textContent = roll.toFixed(1) + "°";
-    document.getElementById("imu-pitch").textContent = pitch.toFixed(1) + "°";
-    document.getElementById("imu-tot").textContent = tot.toFixed(1) + "°";
-  }
-}
-
-/* ══════════ luci ══════════ */
+/* ══════════ luci ══════════ *//* ══════════ luci ══════════ */
 function costruisciLuci(contenitore){
   const g = document.createElement("div");
   g.className = "griglia";
@@ -1066,8 +1096,6 @@ let sheetAperta = false;
 function mostraSezione(i){
   sezioneAttiva = i;
   clearInterval(timerSistema);
-  clearInterval(timerImu);
-  timerImu = null;
   document.documentElement.style.setProperty("--accent", SEZIONI[i][2]);
   contenuto.innerHTML = "";
   SEZIONI[i][1](contenuto);

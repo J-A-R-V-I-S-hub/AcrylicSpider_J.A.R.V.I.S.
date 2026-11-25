@@ -148,35 +148,46 @@ def posa_finale(pitch=None, roll=None, hold=0.10):
     pose(0, pitch, roll, hold=hold)
 
 
-def livella(passi=3, tolleranza=0.02):
-    """Rilegge l'IMU e riporta il corpo in piano, muovendo solo i servi M.
+def livella(passi=4, tolleranza_gradi=1.5):
+    """Riporta il corpo in piano leggendo l'accelerometro.
 
-    LIMITE IMPORTANTE: l'IMU misura l'ASSETTO del corpo, non il contatto
-    delle singole punte. Serve a far finire una mossa ben livellata, ma NON
-    può sapere quale zampa è sollevata: per quello servirebbero sensori di
-    contatto su ogni zampa, che questo ragno non ha. Se una zampa resta per
-    aria, la causa è meccanica (corsa del servo, vite, montaggio) oppure
-    un'ampiezza troppo grande.
+    Due cose che il codice Adeept dava per scontate e qui non valgono:
+      1. gli assi sono montati ruotati: x = avanti/indietro, y = destra/sinistra
+      2. il MPU-6050 restituisce m/s² (z ≈ 9.8), non g: va normalizzato,
+         altrimenti la correzione satura subito
+
+    La correzione è proporzionale all'angolo residuo e si ripete: così converge
+    invece di dare un colpo solo.
     """
     if not getattr(SpiderG, 'MPU_connection', 0):
         return
+
+    # 0.45 unità di posa corrispondono a circa 11° misurati sul robot:
+    # da qui il guadagno K ≈ 2.3, che riporta l'angolo in unità di posa.
+    K = 2.3
     pitch = 0.0
     roll = 0.0
+
     for _ in range(max(1, passi)):
         try:
             d = SpiderG.sensor.get_accel_data()
-            ex = d['x'] - SpiderG.X_steady
-            ey = d['y'] - SpiderG.Y_steady
-            if abs(ex) < tolleranza and abs(ey) < tolleranza:
-                break
-            pitch = max(-0.5, min(0.5, pitch + ey * SpiderG.P))
-            roll = max(-0.5, min(0.5, roll + ex * SpiderG.P))
-            SpiderG.status_GenOut(0, pitch, roll)
-            _reach(dict(SpiderG.goal_dict))
-            time.sleep(0.12)
+            x, y, z = float(d['x']), float(d['y']), float(d['z'])
         except Exception as e:
             print("wakeup: livella non disponibile:", e, flush=True)
             return
+
+        scala = max(1.0, abs(z))
+        ax = x / scala          # avanti/indietro (radianti circa)
+        ay = y / scala          # sinistra/destra
+
+        if abs(ax) * 57.3 < tolleranza_gradi and abs(ay) * 57.3 < tolleranza_gradi:
+            break
+
+        pitch = max(-0.6, min(0.6, pitch + ax * K))
+        roll = max(-0.6, min(0.6, roll + ay * K))
+        SpiderG.status_GenOut(0, pitch, roll)
+        _reach(dict(SpiderG.goal_dict))
+        time.sleep(0.12)
 
 
 def _init():

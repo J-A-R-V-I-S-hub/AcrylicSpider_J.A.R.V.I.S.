@@ -13,6 +13,7 @@ from camera_opencv import Camera
 import threading
 import time
 import hmac
+import SpiderG
 import comandi
 import imu
 import sistema
@@ -281,6 +282,28 @@ def comandi_page():
 def api_comandi_stato():
     """Stato corrente: occupato / ultima mossa / esito."""
     return jsonify(comandi.stato())
+
+
+@app.route('/api/livella', methods=['POST'])
+def api_livella():
+    """Mette il corpo in piano muovendo i servi centrali (livella() di wakeup).
+
+    È un'azione, non un comando in loop: prende il lucchetto, livella e lo
+    rilascia. Se una mossa è in corso risponde 409 invece di accavallarsi.
+    """
+    import comandi
+    import wakeup
+    if not comandi.LOCK.acquire(blocking=False):
+        return jsonify({'ok': False, 'messaggio': 'una mossa è in corso'}), 409
+    try:
+        SpiderG.Servo.pause()
+        wakeup.livella(passi=5)
+        esito = wakeup.throttled()
+        return jsonify({'ok': True, 'tensione': esito == 0})
+    except Exception as e:
+        return jsonify({'ok': False, 'messaggio': str(e)}), 500
+    finally:
+        comandi.LOCK.release()
 
 
 @app.route('/api/imu')

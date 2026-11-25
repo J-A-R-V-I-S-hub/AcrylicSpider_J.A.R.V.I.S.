@@ -5,8 +5,8 @@
 # senza toccare la modalità "Stabilizza", che usa lo stesso sensore.
 #
 # Gli angoli sono calcolati dal vettore di gravità dell'accelerometro:
-#   roll  = atan2(x, sqrt(y² + z²))   inclinazione destra/sinistra
-#   pitch = atan2(y, sqrt(x² + z²))   inclinazione avanti/indietro
+#   pitch = atan2(x, sqrt(y² + z²))   muso su / muso giù
+#   roll  = atan2(y, sqrt(x² + z²))   inclinazione destra / sinistra
 # Con il ragno in piano: x ≈ 0, y ≈ 0, z ≈ 1 g.
 #
 # Nota: è un accelerometro, non un giroscopio integrato. Va benissimo per una
@@ -36,9 +36,14 @@ def leggi():
     except Exception as e:
         return {'ok': False, 'errore': 'lettura fallita: %s' % e}
 
-    # angoli in gradi, indipendenti dal segno delle assi
-    roll = math.degrees(math.atan2(x, math.sqrt(y * y + z * z)))
-    pitch = math.degrees(math.atan2(y, math.sqrt(x * x + z * z)))
+    # ASSI DI QUESTO MONTAGGIO (verificato sul robot):
+    #   x = asse AVANTI/INDIETRO  → muso in su dà x > 0
+    #   y = asse SINISTRA/DESTRA  → inclinare a sinistra dà y > 0
+    # Quindi il "pitch" (muso su/giù) si ricava da x e il "roll" (lato) da y.
+    # Nella prima versione erano invertiti: la bolla si muoveva sull'asse
+    # sbagliato.
+    pitch = math.degrees(math.atan2(x, math.sqrt(y * y + z * z)))
+    roll = math.degrees(math.atan2(y, math.sqrt(x * x + z * z)))
     inclinazione = math.degrees(math.acos(max(-1.0, min(1.0, z / max(0.001, math.sqrt(x*x + y*y + z*z))))))
 
     return {
