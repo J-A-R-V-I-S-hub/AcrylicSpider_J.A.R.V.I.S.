@@ -11,6 +11,7 @@ import datetime
 import threading
 import time
 
+import comandi
 import wakeup
 
 ENABLED = True
@@ -40,10 +41,19 @@ def _loop(led):
         if now.hour % EVERY != 0:
             continue
 
+        # Stesso lucchetto dei comandi manuali: se qualcuno sta muovendo il
+        # ragno dal pannello, aspetto (max 2 min) invece di scontrarmi.
+        if not comandi.LOCK.acquire(timeout=120):
+            print("hourly: sequenza saltata, un comando manuale è in corso",
+                  flush=True)
+            continue
+
         try:
             wakeup.run(led)
         except Exception as e:
             print("hourly: errore durante la sequenza:", e)
+        finally:
+            comandi.LOCK.release()
 
 
 def start(led=None):
