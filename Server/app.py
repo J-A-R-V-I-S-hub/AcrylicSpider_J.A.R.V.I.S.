@@ -14,6 +14,7 @@ import threading
 import time
 import hmac
 import comandi
+import imu
 import sistema
 
 
@@ -280,6 +281,15 @@ def comandi_page():
 def api_comandi_stato():
     """Stato corrente: occupato / ultima mossa / esito."""
     return jsonify(comandi.stato())
+
+
+@app.route('/api/imu')
+def api_imu():
+    """Assetto corrente per la bolla live: roll, pitch e inclinazione."""
+    try:
+        return jsonify(imu.leggi())
+    except Exception as e:
+        return jsonify({'ok': False, 'errore': str(e)}), 500
 
 
 @app.route('/api/sistema')
