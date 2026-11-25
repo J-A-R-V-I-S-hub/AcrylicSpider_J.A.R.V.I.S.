@@ -1,0 +1,41 @@
+# Librerie Python del robot — versioni ESATTE testate sul Raspberry Pi 4
+# con Debian 13 (trixie) aarch64 e Python 3.13.
+#
+# Perché con == : senza il blocco, un `pip install` prende l'ultima versione e
+# può rompere il robot. Il caso concreto è websockets: il WebServer usa l'API
+# legacy (websockets.legacy), che dalla 14 è deprecata e non è più garantita.
+# Con queste versioni il pannello e i comandi funzionano; con altre no.
+#
+# Installazione (setup.py lo fa da solo):
+#   pip3 install -r requirements.txt --break-system-packages
+
+# ── servo e luci ────────────────────────────────────────────
+Adafruit-Blinka-Raspberry-Pi-PWM==1.0.2
+Adafruit-PCA9685==1.0.1
+rpi_ws281x==5.0.0
+
+# ── web ─────────────────────────────────────────────────────
+Flask==3.1.3
+flask-cors==6.0.5
+websockets==13.0
+
+# ── sensori ─────────────────────────────────────────────────
+mpu6050-raspberrypi==1.2
+adafruit-circuitpython-ads7830==1.0.8
+adafruit-circuitpython-busdevice==5.2.17
+
+# ── supporto ────────────────────────────────────────────────
+numpy==2.2.4
+imutils==0.5.4
+psutil==7.0.0
+pyzmq==27.3.0
+pybase64==1.5.2
+
+# ── dipendenze di Adafruit-Blinka, bloccate anche queste ────
+# Se lasciate libere, pip può aggiornarle e cambiare il comportamento del bus I2C.
+Adafruit-Blinka==10.2.0
+Adafruit-PlatformDetect==3.90.0
+Adafruit-PureIO==1.1.12
+adafruit-circuitpython-connectionmanager==3.1.8
+adafruit-circuitpython-requests==4.1.18
+adafruit-circuitpython-typing==1.13.0
