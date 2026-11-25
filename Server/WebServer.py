@@ -355,7 +355,13 @@ def configPWM(command_input, response):
 
 async def check_permit(websocket):
     while True:
-        recv_str = await websocket.recv()
+        # Il client può chiudere la pagina mentre aspettiamo le credenziali:
+        # senza questo except il server stampa un traceback a ogni disconnessione.
+        try:
+            recv_str = await websocket.recv()
+        except websockets.exceptions.ConnectionClosed:
+            print('client disconnected before login')
+            return False
         cred_dict = recv_str.split(":")
         if cred_dict[0] == "admin" and cred_dict[1] == "123456":
             response_str = "congratulation, you have connect with server\r\nnow, you can do something else"
@@ -376,7 +382,12 @@ async def recv_msg(websocket):
         }
 
         data = ''
-        data = await websocket.recv()
+        try:
+            data = await websocket.recv()
+        except websockets.exceptions.ConnectionClosed:
+            # chiusura normale del pannello: non è un errore
+            print('client disconnected')
+            return
         try:
             data = json.loads(data)
         except Exception as e:
@@ -406,11 +417,16 @@ async def recv_msg(websocket):
 
         print(data)
         response = json.dumps(response)
-        await websocket.send(response)
+        try:
+            await websocket.send(response)
+        except websockets.exceptions.ConnectionClosed:
+            print('client disconnected')
+            return
 
 async def main_logic(websocket, path):
-    await check_permit(websocket)
-    await recv_msg(websocket)
+    # Se il client se ne va prima del login, non entrare nel ciclo dei comandi.
+    if await check_permit(websocket):
+        await recv_msg(websocket)
 
 if __name__ == '__main__':
     switch.switchSetup()
@@ -426,13 +442,23 @@ if __name__ == '__main__':
             ws2812.breath(70,70,255)
         else:
             ws2812.led_close()
+        # registra l'oggetto luci per i comandi manuali del pannello /comandi
+        try:
+            import comandi
+            comandi.set_led(ws2812)
+        except Exception as e:
+            print("comandi: led non registrato:", e)
     except KeyboardInterrupt:
         ws2812.led_close()
         pass
 
     try:
         import wakeup
-        wakeup.run(ws2812)
+        import comandi
+        # Stesso lucchetto dei comandi manuali: la coreografia di avvio non
+        # deve scontrarsi con un comando inviato dal pannello.
+        with comandi.LOCK:
+            wakeup.run(ws2812)
     except Exception as e:
         print("wakeup error:", e)
 
