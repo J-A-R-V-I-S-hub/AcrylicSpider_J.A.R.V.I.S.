@@ -34,3 +34,9 @@ desktop.ini
 
 # NOTA: Server/dist/ NON va ignorata — è la web UI compilata,
 # serve al pannello di controllo ed è versionata di proposito.
+
+# ── Segreti (NON committare) ────────────────────────────
+.env
+Server/.env
+!.env.example
+!Server/.env.example
