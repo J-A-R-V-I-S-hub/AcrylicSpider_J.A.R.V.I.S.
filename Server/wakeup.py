@@ -346,7 +346,7 @@ def battito(colpi=2, amp=30, hold=0.06):
     _reach(_neutral())
 
 
-def onda_lenta(amp=52, periodi=2.0, durata=3.0, fps=20, ordine=None):
+def onda_lenta(amp=70, periodi=2.0, durata=3.2, fps=20, ordine=None):
     """Onda fluida: le quattro punte seguono una sinusoide sfasata.
 
     Non è una sequenza di scatti: ogni zampa è a un punto diverso della stessa
@@ -377,7 +377,7 @@ def onda_lenta(amp=52, periodi=2.0, durata=3.0, fps=20, ordine=None):
     _reach(base)
 
 
-def respiro(cicli=3, su=52, giu=-22, hold=0.40, passi=6, passo=0.09):
+def respiro(cicli=3, su=86, giu=-46, hold=0.40, passi=6, passo=0.09):
     """Respiro naturale: sale piano, pausa, scende piano, pausa, ripete.
 
     Non sono tre pose staccate: ogni salita e ogni discesa è una rampa di
