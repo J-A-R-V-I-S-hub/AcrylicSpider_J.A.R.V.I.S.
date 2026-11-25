@@ -377,7 +377,7 @@ def onda_lenta(amp=70, periodi=2.0, durata=3.2, fps=20, ordine=None):
     _reach(base)
 
 
-def respiro(cicli=3, su=120, giu=-58, hold=0.40, passi=6, passo=0.09):
+def respiro(cicli=2, su=120, giu=-58, hold=0.28, passi=5, passo=0.075):
     """Respiro naturale: sale piano, pausa, scende piano, pausa, ripete.
 
     Non sono tre pose staccate: ogni salita e ogni discesa è una rampa di
