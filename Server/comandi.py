@@ -135,6 +135,8 @@ MOSSE = {
     'dondolio':    _servo(_dondolio),
     'petalo':      _servo(lambda: wakeup.petalo()),
     'battito':     _servo(lambda: wakeup.battito(2)),
+    'onda_lenta':  _servo(lambda: wakeup.onda_lenta()),
+    'respiro':     _servo(lambda: wakeup.respiro()),
     'torsione':    _servo(lambda: wakeup.torsione()),
     'scalini':     _servo(lambda: wakeup.scalini()),
     'ventaglio':   _servo(lambda: wakeup.ventaglio()),

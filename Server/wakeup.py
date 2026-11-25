@@ -345,6 +345,28 @@ def battito(colpi=2, amp=30, hold=0.06):
     _reach(_neutral())
 
 
+def onda_lenta(amp=48, hold=0.38, pausa=0.06):
+    """Onda lenta: una zampa alla volta, in giro attorno al corpo.
+
+    Muove UN servo per volta, quindi la corrente di picco è minima: è la
+    mossa più "gentile" che abbiamo. Visivamente è un'onda che gira.
+    """
+    for nome in ('FLE', 'HLE', 'FRE', 'HRE'):
+        leg(nome, amp * PUNTA_SU[nome], hold=hold)
+        time.sleep(pausa)
+
+
+def respiro(alto=88, basso=-28, hold=0.55):
+    """Respiro: il corpo sale lentamente, scende sotto il neutro, si riposa.
+
+    Usa solo i quattro servi centrali e si muove piano: niente picchi.
+    """
+    pose(0, 0, 0, hold=0.08)
+    pose(alto, 0, 0, hold=hold)
+    pose(basso, 0, 0, hold=hold * 0.8)
+    pose(0, 0, 0, hold=0.1)
+
+
 def torsione(hold=0.30):
     """Torsione in diagonale: avanti-destra, indietro-sinistra e incroci."""
     for p, r in ((0.40, 0.40), (-0.40, -0.40),
