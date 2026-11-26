@@ -174,19 +174,31 @@
 
   /* ───────── sagoma 3D sopra la telecamera ───────── */
   .avatar{
-    position:absolute;z-index:3;left:50%;top:44%;
-    width:min(80vmin,760px);aspect-ratio:1.9;
+    position:absolute;z-index:3;left:50%;top:52%;
+    width:min(74vmin,600px);aspect-ratio:1.9;
     transform:translate(-50%,-50%);
-    pointer-events:none;opacity:.9;
+    pointer-events:auto;cursor:grab;touch-action:none;user-select:none;opacity:.9;
     filter:drop-shadow(0 16px 26px rgba(0,0,0,.55)) drop-shadow(0 0 16px rgba(95,215,255,.16));
     animation:appariRagno .85s cubic-bezier(.2,.7,.2,1) both;
   }
+  .avatar.afferrato{cursor:grabbing}
   .avatar canvas{display:block;width:100%;height:100%}
   .avatar-tag{
     position:absolute;left:50%;bottom:-26px;transform:translateX(-50%);
     font-size:7.5px;letter-spacing:.22em;color:rgba(246,244,242,.42);
     white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.85);
+    pointer-events:none;
   }
+  .avatar-reset{
+    position:absolute;left:calc(50% + 112px);bottom:-35px;z-index:2;
+    width:25px;height:25px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid rgba(246,244,242,.20);background:rgba(37,36,35,.62);
+    color:var(--fg-3);font:inherit;font-size:13px;line-height:1;cursor:pointer;
+    backdrop-filter:blur(6px);transition:color .18s,border-color .18s,transform .18s;
+  }
+  .avatar-reset:hover{color:var(--turquoise);border-color:var(--turquoise)}
+  .avatar-reset:active{transform:scale(.9)}
   .avatar.senza3d::after{
     content:"3D non disponibile";position:absolute;left:50%;top:50%;
     transform:translate(-50%,-50%);font-size:10px;letter-spacing:.16em;
@@ -198,7 +210,7 @@
     to{opacity:.9;transform:translate(-50%,-50%) scale(1)}
   }
   @media(max-width:560px){
-    .avatar{top:42%;width:min(92vmin,620px)}
+    .avatar{top:54%;width:min(74vmin,600px)}
     .avatar-tag{font-size:7px}
   }
 
@@ -405,9 +417,12 @@
 <!-- ══════ CAMERA + COMANDI IN TRASPARENZA ══════ -->
 <div class="stage" id="stage">
   <div class="feed"><img id="cam" src="/video_feed" alt="camera"></div>
-  <div class="avatar" id="avatar-ragno" aria-hidden="true">
+  <div class="avatar" id="avatar-ragno" role="group"
+       aria-label="Modello 3D del ragno: trascina per ruotare, pizzica per ingrandire, doppio tocco per la vista da dietro">
     <canvas id="tela-ragno"></canvas>
-    <span class="avatar-tag">POSA REALE · 12 SERVI</span>
+    <button class="avatar-reset" id="reset-vista" type="button"
+            aria-label="Torna alla vista da dietro" title="Torna alla vista da dietro">⟲</button>
+    <span class="avatar-tag">3D LIVE · TRASCINA PER RUOTARE</span>
   </div>
   <div class="ang a1"></div><div class="ang a2"></div>
   <div class="ang a3"></div><div class="ang a4"></div>
@@ -568,7 +583,7 @@ function arma(v){
 }
 
 stage.addEventListener("click", (e) => {
-  if (e.target.closest(".overlay")) return;
+  if (e.target.closest(".overlay, .avatar")) return;
   arma(!armato);
 });
 

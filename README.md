@@ -106,13 +106,19 @@ Una sola pagina a schermo pieno, pensata prima per il telefono:
 
 **Come funziona il loop:** schiacci una mossa e si ripete; rischiacci e si ferma. Se ne premi un'altra mentre gira, cambia al volo. Il pulsante **STOP LOOP** compare solo quando serve.
 
-**Sagoma 3D live.** Al centro del video c'è il ragno disegnato in 3D con **Three.js**
-(vendored in `dist/js/`, nessuna CDN e nessun build). Non è un'animazione decorativa:
-legge `/api/posa` più volte al secondo, cioè i PWM **realmente scritti** sui 12 servi,
-e ne ricava la posizione di base, femore e tibia di ogni zampa. L'altezza del corpo non è
-inventata: il piede più basso resta a terra, quindi quando il ragno si abbassa o si alza
-la sagoma lo segue. Anche pitch e roll vengono dall'IMU. La sagoma sta sopra la telecamera,
-centrata e leggermente trasparente; sui telefoni resta visibile e i comandi stanno sotto.
+**Sagoma 3D live, in terza persona.** Al centro del video c'è il ragno disegnato in 3D
+con **Three.js** (vendored in `dist/js/`, nessuna CDN e nessun build). Non è un'animazione
+decorativa: legge `/api/posa` più volte al secondo, cioè i PWM **realmente scritti** sui
+12 servi, e ne ricava la posizione di base, femore e tibia di ogni zampa. L'altezza del
+corpo non è inventata: il piede più basso resta a terra, quindi quando il ragno si abbassa
+o si alza la sagoma lo segue. Anche pitch e roll vengono dall'IMU.
+
+La vista predefinita è **da dietro e bassa**, come un simulatore: il ragno è appoggiato su
+una pista AR discreta, con la telecamera reale come sfondo. Si può **trascinare** per
+ruotarlo a 360°, usare la **rotella** o il **pinch** per avvicinarsi, e il pulsante **⟲**
+(o il doppio tocco) riporta alla vista da dietro. La vista torna da sola in terza persona
+dopo qualche secondo di inattività **e quando il ragno ricomincia a muoversi**, così i
+comandi restano sempre orientati. Sui telefoni resta visibile e i comandi stanno sotto.
 
 **Installabile come app (PWA).** Dal browser del telefono: *Aggiungi alla schermata Home*.
 Si apre a schermo intero, con l'icona del reattore, e attiva il **wake lock**: mentre la

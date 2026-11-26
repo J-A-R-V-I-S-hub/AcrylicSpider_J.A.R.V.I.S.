@@ -56,7 +56,7 @@ function avvia(tela) {
   renderer.setClearAlpha(0);
 
   const scena = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(24, 1.9, 0.5, 200);
+  const camera = new THREE.PerspectiveCamera(28, 1.9, 0.5, 200);
 
   /* ── ambiente: riflessi caldi/freddi da studio ─────────────────────────── */
   const ambiente = creaAmbiente(renderer);
@@ -150,6 +150,12 @@ function avvia(tela) {
   });
   const filoNero = new THREE.MeshStandardMaterial({
     color: 0x141414, roughness: 0.7, metalness: 0.1
+  });
+  const filoRosso = new THREE.MeshStandardMaterial({
+    color: 0xc82020, roughness: 0.55, metalness: 0.1
+  });
+  const batteriaMat = new THREE.MeshStandardMaterial({
+    color: 0x101a26, metalness: 0.45, roughness: 0.34, envMapIntensity: 1.2
   });
 
   /* ── rig: scena → rig (quota) → inclinazione → scocca ─────────────────── */
@@ -282,6 +288,39 @@ function avvia(tela) {
     const taglio = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.025, 0.035), chip);
     taglio.position.set(sx, 3.46, sz);
     scocca.add(taglio);
+  }
+
+  /* batteria sotto la piastra */
+  const batteria = new THREE.Mesh(new THREE.BoxGeometry(7.2, 1.05, 5.0), batteriaMat);
+  batteria.position.set(0, 0.68, 0.15);
+  scocca.add(batteria);
+  const etichettaBatteria = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.24, 0.05), etichetta);
+  etichettaBatteria.position.set(0, 0.72, -2.38);
+  scocca.add(etichettaBatteria);
+  tavolaCavo([[0.25, 0.95, -2.40], [0.30, 1.55, -3.60], [0.25, 2.05, -4.18]], filoRosso, 0.055, scocca);
+  tavolaCavo([[-0.25, 0.95, -2.40], [-0.30, 1.55, -3.60], [-0.25, 2.05, -4.18]], filoNero, 0.055, scocca);
+
+  /* pannello posteriore: alimentazione, interruttore, LED */
+  const pannelloRetro = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.25, 0.16), acrilicoChiaro);
+  pannelloRetro.position.set(0, 2.30, -4.20);
+  scocca.add(pannelloRetro);
+  const presaUsbC = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.34, 0.30), portaAcciaio);
+  presaUsbC.position.set(0, 2.10, -4.36);
+  scocca.add(presaUsbC);
+  const bucoUsbC = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.14, 0.04), chip);
+  bucoUsbC.position.set(0, 2.10, -4.52);
+  scocca.add(bucoUsbC);
+  const interruttore = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.26, 0.22), etichetta);
+  interruttore.position.set(-1.05, 2.34, -4.34);
+  scocca.add(interruttore);
+  const ledRetro = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.08), ledCiano);
+  ledRetro.position.set(1.05, 2.34, -4.31);
+  scocca.add(ledRetro);
+  for (const sx of [-1.45, 1.45]) {
+    const testa = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.06, 10), alluminio);
+    testa.rotation.x = Math.PI / 2;
+    testa.position.set(sx, 2.80, -4.31);
+    scocca.add(testa);
   }
 
   /* telecamera frontale */
@@ -477,6 +516,30 @@ function avvia(tela) {
   ombraTerra.position.y = 0.008;
   scena.add(ombraTerra);
 
+  /* pista a terra: un segnaposto AR discreto, come una landing pad */
+  const pista = new THREE.Group();
+  const anelloPista = new THREE.Mesh(
+    new THREE.RingGeometry(11.05, 11.32, 96),
+    new THREE.MeshBasicMaterial({
+      color: 0x6fd8ff, transparent: true, opacity: 0.18,
+      side: THREE.DoubleSide, depthWrite: false
+    })
+  );
+  anelloPista.rotation.x = -Math.PI / 2;
+  anelloPista.position.y = 0.016;
+  pista.add(anelloPista);
+  const matTacca = new THREE.MeshBasicMaterial({
+    color: 0xff8a4c, transparent: true, opacity: 0.20, depthWrite: false
+  });
+  for (let i = 0; i < 12; i++) {
+    const ang = (i * Math.PI) / 6;
+    const tacca = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.02, 0.07), matTacca);
+    tacca.position.set(Math.cos(ang) * 11.55, 0.016, Math.sin(ang) * 11.55);
+    tacca.rotation.y = -ang;
+    pista.add(tacca);
+  }
+  scena.add(pista);
+
   const ombrePiedi = ZAMPE.map(() => {
     const m = new THREE.Mesh(
       new THREE.PlaneGeometry(3.0, 3.0),
@@ -497,11 +560,139 @@ function avvia(tela) {
   const scala = 23 / Math.max(dim0.x, dim0.z);
   scenaRagno.scale.setScalar(scala);
 
-  const dirCamera = new THREE.Vector3(0.42, 0.60, 0.68).normalize();
-  const bersaglioCamera = new THREE.Vector3(0, 3.00, 1.0);
-  camera.position.copy(bersaglioCamera).addScaledVector(dirCamera, 33.5);
-  camera.lookAt(bersaglioCamera);
+  /* ── camera orbitale: terza persona da dietro + ispezione 3D ─────────── */
+  const bersaglio = new THREE.Vector3(0, 3.05, 0);
+  const VISTA_TERZA = { azim: Math.PI - 0.45, elev: 0.40, dist: 33.0 };
+  const vista = {
+    azim: VISTA_TERZA.azim, elev: VISTA_TERZA.elev, dist: VISTA_TERZA.dist,
+    azimV: 0, elevV: 0
+  };
+  const rientro = { attivo: false };
+  let ultimaInterazione = performance.now();
+  let trascinando = false;
+  let ultimoX = 0, ultimoY = 0, pinchPrec = 0;
+  const puntatori = new Map();
+
+  /* luce che segue la camera: il lato che guardi resta leggibile */
+  const riempimento = new THREE.DirectionalLight(0xbfd6ff, 1.05);
+  riempimento.target.position.copy(bersaglio);
+  scena.add(riempimento);
+  scena.add(riempimento.target);
+
+  function applicaVista() {
+    const ce = Math.cos(vista.elev);
+    const dir = new THREE.Vector3(
+      Math.sin(vista.azim) * ce,
+      Math.sin(vista.elev),
+      Math.cos(vista.azim) * ce
+    );
+    camera.position.copy(bersaglio).addScaledVector(dir, vista.dist);
+    camera.lookAt(bersaglio);
+    riempimento.position.copy(camera.position).add(new THREE.Vector3(0, 2.5, 0));
+  }
+  applicaVista();
   camera.updateProjectionMatrix();
+
+  function segnalaInterazione() {
+    ultimaInterazione = performance.now();
+    rientro.attivo = false;
+  }
+
+  function tornaInTerzaPersona() {
+    vista.azimV = 0;
+    vista.elevV = 0;
+    rientro.attivo = true;
+  }
+
+  function distanzaPuntatori() {
+    const p = Array.from(puntatori.values());
+    return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+  }
+
+  host.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.avatar-reset')) return;
+    try { host.setPointerCapture(e.pointerId); } catch (_) {}
+    puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    host.classList.add('afferrato');
+    if (puntatori.size === 1) {
+      trascinando = true;
+      ultimoX = e.clientX;
+      ultimoY = e.clientY;
+      vista.azimV = 0;
+      vista.elevV = 0;
+    } else if (puntatori.size === 2) {
+      trascinando = false;
+      pinchPrec = distanzaPuntatori();
+    }
+    segnalaInterazione();
+  });
+
+  host.addEventListener('pointermove', (e) => {
+    if (!puntatori.has(e.pointerId)) return;
+    puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (puntatori.size === 2) {
+      const d = distanzaPuntatori();
+      if (pinchPrec > 0 && d > 0) {
+        vista.dist = Math.max(22, Math.min(52, vista.dist * (pinchPrec / d)));
+        applicaVista();
+      }
+      pinchPrec = d;
+      segnalaInterazione();
+      return;
+    }
+
+    if (!trascinando) return;
+    const dx = e.clientX - ultimoX;
+    const dy = e.clientY - ultimoY;
+    ultimoX = e.clientX;
+    ultimoY = e.clientY;
+    vista.azim -= dx * 0.0065;
+    vista.elev = Math.max(0.06, Math.min(1.30, vista.elev + dy * 0.0045));
+    vista.azimV = -dx * 0.0065;
+    vista.elevV = dy * 0.0045;
+    applicaVista();
+    segnalaInterazione();
+  });
+
+  function finePuntatore(e) {
+    puntatori.delete(e.pointerId);
+    if (puntatori.size === 0) {
+      trascinando = false;
+      host.classList.remove('afferrato');
+    } else if (puntatori.size === 1) {
+      const p = Array.from(puntatori.values())[0];
+      ultimoX = p.x;
+      ultimoY = p.y;
+      trascinando = true;
+      pinchPrec = 0;
+    }
+  }
+  host.addEventListener('pointerup', finePuntatore);
+  host.addEventListener('pointercancel', finePuntatore);
+  host.addEventListener('lostpointercapture', finePuntatore);
+
+  host.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    vista.dist = Math.max(22, Math.min(52, vista.dist * Math.exp(e.deltaY * 0.0012)));
+    vista.azimV = 0;
+    vista.elevV = 0;
+    applicaVista();
+    segnalaInterazione();
+  }, { passive: false });
+
+  host.addEventListener('dblclick', (e) => {
+    if (e.target.closest('.avatar-reset')) return;
+    tornaInTerzaPersona();
+  });
+
+  const pulsanteReset = document.getElementById('reset-vista');
+  if (pulsanteReset) {
+    pulsanteReset.addEventListener('click', (e) => {
+      e.stopPropagation();
+      tornaInTerzaPersona();
+    });
+  }
 
   const luce = new THREE.PointLight(0x8fe8ff, 10, 22, 2);
   luce.position.set(0, 7, 8);
@@ -534,8 +725,14 @@ function avvia(tela) {
       if (!ris.ok) return;
       const dati = await ris.json();
       if (!dati || !dati.servi) return;
+      const eraPrimo = primoDato;
+      let cambiato = false;
       for (const nome in dati.servi) {
-        if (nome in obiettivo) obiettivo[nome] = Number(dati.servi[nome]) || NEUTRO;
+        if (nome in obiettivo) {
+          const nuovoValore = Number(dati.servi[nome]) || NEUTRO;
+          if (eraPrimo && Math.abs(nuovoValore - obiettivo[nome]) > 10) cambiato = true;
+          obiettivo[nome] = nuovoValore;
+        }
       }
       assettoObiettivo.pitch = Number(dati.pitch) || 0;
       assettoObiettivo.roll = Number(dati.roll) || 0;
@@ -543,6 +740,9 @@ function avvia(tela) {
         Object.assign(servo, obiettivo);
         Object.assign(assetto, assettoObiettivo);
         primoDato = true;
+      } else if (cambiato && !trascinando &&
+                 performance.now() - ultimaInterazione > 1200) {
+        rientro.attivo = true;
       }
     } catch (_) {
       /* la telecamera continua: la sagoma resta sull'ultima posa */
@@ -563,7 +763,7 @@ function avvia(tela) {
   let tempo = 0;
 
   function aggiorna(dt, adesso) {
-    const k = 1 - Math.exp(-dt * 10.5);
+    const k = 1 - Math.exp(-dt * 12);
     for (const nome in servo) servo[nome] += (obiettivo[nome] - servo[nome]) * k;
     assetto.pitch += (assettoObiettivo.pitch - assetto.pitch) * k;
     assetto.roll += (assettoObiettivo.roll - assetto.roll) * k;
@@ -581,12 +781,12 @@ function avvia(tela) {
       /* positivo = punta che si solleva */
       const arriccia = (e - NEUTRO) * g.def.de;
 
-      let phi = (PHI0 + raccogli * 0.075) * D;
-      let psi = (PSI0 + arriccia * 0.17) * D;
+      let phi = (PHI0 + raccogli * 0.10) * D;
+      let psi = (PSI0 + arriccia * 0.21) * D;
       phi = Math.max(0.10, Math.min(1.22, phi));
       psi = Math.max(-2.05, Math.min(-0.62, psi));
 
-      const imbardata = (g.def.yaw + (b - NEUTRO) * g.def.db * 0.22) * D;
+      const imbardata = (g.def.yaw + (b - NEUTRO) * g.def.db * 0.26) * D;
       g.root.rotation.y = imbardata;
       g.femore.rotation.z = phi;
       g.tibia.rotation.z = psi;
@@ -614,8 +814,8 @@ function avvia(tela) {
     else quota += (-piedePiuBasso - quota) * (1 - Math.exp(-dt * 13));
     rig.position.y = quota;
 
-    inclina.rotation.x = -assetto.pitch * 0.42 * D;
-    inclina.rotation.z = assetto.roll * 0.46 * D;
+    inclina.rotation.x = -assetto.pitch * 0.80 * D;
+    inclina.rotation.z = assetto.roll * 0.80 * D;
 
     /* respiro leggerissimo del gruppo led, per non farlo sembrare un fermo */
     tempo = adesso / 1000;
@@ -646,6 +846,47 @@ function avvia(tela) {
     ultimo = adesso;
     if (document.hidden) return;
     aggiorna(dt, adesso);
+
+    /* camera: inerzia, rientro morbido, ritorno automatico in terza persona */
+    if (!trascinando) {
+      if (rientro.attivo) {
+        const k = 1 - Math.exp(-dt * 3.4);
+        let dAz = VISTA_TERZA.azim - vista.azim;
+        dAz = Math.atan2(Math.sin(dAz), Math.cos(dAz));
+        vista.azim += dAz * k;
+        vista.elev += (VISTA_TERZA.elev - vista.elev) * k;
+        vista.dist += (VISTA_TERZA.dist - vista.dist) * k;
+        applicaVista();
+        if (Math.abs(dAz) < 0.003 &&
+            Math.abs(VISTA_TERZA.elev - vista.elev) < 0.003 &&
+            Math.abs(VISTA_TERZA.dist - vista.dist) < 0.03) {
+          vista.azim = VISTA_TERZA.azim;
+          vista.elev = VISTA_TERZA.elev;
+          vista.dist = VISTA_TERZA.dist;
+          vista.azimV = 0;
+          vista.elevV = 0;
+          rientro.attivo = false;
+          ultimaInterazione = adesso;
+          applicaVista();
+        }
+      } else if (Math.abs(vista.azimV) > 1e-5 || Math.abs(vista.elevV) > 1e-5) {
+        vista.azim += vista.azimV;
+        vista.elev = Math.max(0.06, Math.min(1.30, vista.elev + vista.elevV));
+        const f = Math.exp(-dt * 5.5);
+        vista.azimV *= f;
+        vista.elevV *= f;
+        applicaVista();
+      } else if (adesso - ultimaInterazione > 5500) {
+        let dAz = VISTA_TERZA.azim - vista.azim;
+        dAz = Math.atan2(Math.sin(dAz), Math.cos(dAz));
+        if (Math.abs(dAz) > 0.01 ||
+            Math.abs(VISTA_TERZA.elev - vista.elev) > 0.01 ||
+            Math.abs(VISTA_TERZA.dist - vista.dist) > 0.08) {
+          rientro.attivo = true;
+        }
+      }
+    }
+
     renderer.render(scena, camera);
   }
   requestAnimationFrame(frame);
