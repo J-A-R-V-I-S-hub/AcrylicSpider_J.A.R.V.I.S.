@@ -321,6 +321,31 @@ def api_luci():
     return jsonify({'ok': ok, 'messaggio': messaggio}), (200 if ok else 409)
 
 
+@app.route('/api/posa')
+def api_posa():
+    """Posizione dei 12 servi + assetto, per la sagoma del ragno nel pannello.
+
+    Usa wakeup.current, che è lo stato realmente scritto sul PCA9685: è più
+    affidabile di goal_dict durante le mosse manuali, che bypassano il PID.
+    """
+    import wakeup
+    try:
+        servi = {k: int(v) for k, v in dict(wakeup.current).items()}
+    except Exception:
+        servi = {}
+    try:
+        imu_dati = imu.leggi()
+    except Exception:
+        imu_dati = {'ok': False}
+    return jsonify({
+        'ok': bool(servi),
+        'servi': servi,
+        'roll': imu_dati.get('roll', 0),
+        'pitch': imu_dati.get('pitch', 0),
+        'inclinazione': imu_dati.get('inclinazione', 0),
+    })
+
+
 @app.route('/api/imu')
 def api_imu():
     """Assetto corrente per la bolla live: roll, pitch e inclinazione."""
