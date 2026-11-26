@@ -80,9 +80,9 @@ Una sola pagina a schermo pieno, pensata prima per il telefono:
 ├──────────────────────────────────────────┤
 │                                          │
 │              VIDEO (riempie)             │
-│                                          │
-│  ╭─────╮                      ⬆ ↥ ⬇     │  comandi in trasparenza
-│  │ joy │                      ↰ ■ ↱     │  sopra il video
+│           SAGOMA 3D LIVE                 │  ragno reale, in trasparenza
+│  ╭─────╮                      ⬆ ↥ ⬇     │  comandi sopra il video
+│  │ joy │                      ↰ ■ ↱     │
 │  ╰─────╯                      ⚖ ↧ ✖     │
 └──────────────────────────────────────────┘
 ```
@@ -93,7 +93,7 @@ Una sola pagina a schermo pieno, pensata prima per il telefono:
 - **desktop** → tocca il video per armare i controlli, poi usa le **frecce** o WASD
 - il pulsante **■** ferma subito la marcia
 
-**La sheet dei comandi** (`☰`) ha cinque linguette, ognuna col suo colore:
+**La sheet dei comandi** (`☰`) ha sei linguette, ognuna col suo colore:
 
 | Linguetta | Contenuto |
 |---|---|
@@ -105,6 +105,14 @@ Una sola pagina a schermo pieno, pensata prima per il telefono:
 | **Trim** | calibrazione dei 12 servi con contatore e reset |
 
 **Come funziona il loop:** schiacci una mossa e si ripete; rischiacci e si ferma. Se ne premi un'altra mentre gira, cambia al volo. Il pulsante **STOP LOOP** compare solo quando serve.
+
+**Sagoma 3D live.** Al centro del video c'è il ragno disegnato in 3D con **Three.js**
+(vendored in `dist/js/`, nessuna CDN e nessun build). Non è un'animazione decorativa:
+legge `/api/posa` più volte al secondo, cioè i PWM **realmente scritti** sui 12 servi,
+e ne ricava la posizione di base, femore e tibia di ogni zampa. L'altezza del corpo non è
+inventata: il piede più basso resta a terra, quindi quando il ragno si abbassa o si alza
+la sagoma lo segue. Anche pitch e roll vengono dall'IMU. La sagoma sta sopra la telecamera,
+centrata e leggermente trasparente; sui telefoni resta visibile e i comandi stanno sotto.
 
 **Installabile come app (PWA).** Dal browser del telefono: *Aggiungi alla schermata Home*.
 Si apre a schermo intero, con l'icona del reattore, e attiva il **wake lock**: mentre la
@@ -187,6 +195,7 @@ Il pannello parla con il robot attraverso queste rotte, tutte protette dalla ses
 | Rotta | Metodo | Cosa fa |
 |---|---|---|
 | `/api/imu` | GET | assetto: `roll`, `pitch`, `inclinazione` (offset già applicato) |
+| `/api/posa` | GET | posizione reale dei 12 servi + assetto, per la sagoma 3D |
 | `/api/livella` | POST | mette il corpo in piano muovendo i servi centrali |
 | `/api/sistema` | GET | dati della scheda Info, divisi in gruppi + misure per le barre |
 | `/api/luci` | POST | `{r,g,b,modo,luminosita}` per le strisce |
@@ -240,7 +249,8 @@ Server/              web server, servi, luci, camera, routine
   SpiderG.py         cinematica delle 12 zampe
   .env               credenziali (NON committare)
   .env.example       modello senza segreti
-  dist/              pannello /jarvis, /login, anime.js locale
+  dist/              pannello /jarvis, /login, librerie locali
+  dist/js/            anime.min.js, three.module.min.js, ragno3d.js
   dist/manifest.json + sw.js + icon-*.png   PWA installabile
 Examples/            script di test per ogni componente
 Client/              app desktop opzionale
@@ -402,6 +412,8 @@ inclinerebbe *davvero* il corpo per portare una lettura sbagliata a zero.
 Codice originale: **Adeept** — [adeept/Adeept_DarkPaw-V3](https://github.com/adeept/Adeept_DarkPaw-V3) (nessuna licenza esplicita: uso personale).
 
 Interfaccia e animazioni: [anime.js](https://animejs.com/) di Julian Garnier (MIT).
+
+Sagoma 3D procedurale: [Three.js](https://threejs.org/) (MIT).
 
 Adattamenti, routine e pannello: **Henry** — [J.A.R.V.I.S. Hub](https://github.com/J-A-R-V-I-S-hub)
 

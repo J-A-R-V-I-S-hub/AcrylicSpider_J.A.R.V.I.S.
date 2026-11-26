@@ -172,24 +172,35 @@
   .joy .d-lf{left:7px;top:50%;transform:translateY(-50%)}
   .joy .d-rt{right:7px;top:50%;transform:translateY(-50%)}
 
-  /* sagoma 3D del ragno, fra joystick e pulsanti */
-  .ragno3d{
-    flex:1 1 auto;min-width:110px;max-width:260px;
-    display:flex;align-items:center;justify-content:center;
-    perspective:700px;pointer-events:none;
+  /* ───────── sagoma 3D sopra la telecamera ───────── */
+  .avatar{
+    position:absolute;z-index:3;left:50%;top:44%;
+    width:min(80vmin,760px);aspect-ratio:1.9;
+    transform:translate(-50%,-50%);
+    pointer-events:none;opacity:.9;
+    filter:drop-shadow(0 16px 26px rgba(0,0,0,.55)) drop-shadow(0 0 16px rgba(95,215,255,.16));
+    animation:appariRagno .85s cubic-bezier(.2,.7,.2,1) both;
   }
-  .ragno3d .scena{
-    width:100%;transform-style:preserve-3d;
-    transition:transform .18s linear;
-    filter:drop-shadow(0 14px 18px rgba(0,0,0,.6));
+  .avatar canvas{display:block;width:100%;height:100%}
+  .avatar-tag{
+    position:absolute;left:50%;bottom:-26px;transform:translateX(-50%);
+    font-size:7.5px;letter-spacing:.22em;color:rgba(246,244,242,.42);
+    white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.85);
   }
-  .ragno3d svg{display:block;width:100%;height:auto;overflow:visible}
-  .ragno3d .ombra{fill:rgba(0,0,0,.42)}
-  .ragno3d .corpo{fill:#3a3735;stroke:var(--accent);stroke-width:1.6}
-  .ragno3d .occhio{fill:var(--red)}
-  .ragno3d .zampa{fill:none;stroke:var(--fg-2);stroke-width:3.2;
-    stroke-linecap:round;stroke-linejoin:round}
-  .ragno3d .giunto{fill:var(--accent);opacity:.9}
+  .avatar.senza3d::after{
+    content:"3D non disponibile";position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);font-size:10px;letter-spacing:.16em;
+    color:var(--fg-3);
+  }
+  .avatar.senza3d canvas{display:none}
+  @keyframes appariRagno{
+    from{opacity:0;transform:translate(-50%,-47%) scale(.94)}
+    to{opacity:.9;transform:translate(-50%,-50%) scale(1)}
+  }
+  @media(max-width:560px){
+    .avatar{top:42%;width:min(92vmin,620px)}
+    .avatar-tag{font-size:7px}
+  }
 
   /* corpo: pannello caldo, accenti corallo */
   .corpo{
@@ -225,7 +236,6 @@
     .corpo{padding:5px;gap:4px}
     .corpo button{width:33px;height:33px;font-size:11px}
     .overlay-inner{gap:5px;padding-left:7px;padding-right:7px}
-    .ragno3d{min-width:96px}
   }
   @media(max-width:390px){
     .joy{width:118px;height:118px}
@@ -395,6 +405,10 @@
 <!-- ══════ CAMERA + COMANDI IN TRASPARENZA ══════ -->
 <div class="stage" id="stage">
   <div class="feed"><img id="cam" src="/video_feed" alt="camera"></div>
+  <div class="avatar" id="avatar-ragno" aria-hidden="true">
+    <canvas id="tela-ragno"></canvas>
+    <span class="avatar-tag">POSA REALE · 12 SERVI</span>
+  </div>
   <div class="ang a1"></div><div class="ang a2"></div>
   <div class="ang a3"></div><div class="ang a4"></div>
   <div id="badgeArma">tocca il video per attivare i comandi</div>
@@ -411,20 +425,6 @@
         <span class="dir d-up">▲</span><span class="dir d-dn">▼</span>
         <span class="dir d-lf">◀</span><span class="dir d-rt">▶</span>
         <div class="pomo" id="pomo"></div>
-      </div>
-
-      <!-- sagoma del ragno, in terza persona -->
-      <div class="ragno3d" id="ragno3d" title="posizione reale dei 12 servi">
-        <div class="scena" id="scena-ragno">
-          <svg viewBox="-72 -58 144 116">
-            <ellipse class="ombra" cx="0" cy="12" rx="40" ry="12"/>
-            <g id="zampe-ragno"></g>
-            <g id="giunti-ragno"></g>
-            <ellipse class="corpo" cx="0" cy="0" rx="16" ry="12"/>
-            <circle class="occhio" cx="-5.5" cy="-4" r="2.2"/>
-            <circle class="occhio" cx="5.5" cy="-4" r="2.2"/>
-          </svg>
-        </div>
       </div>
 
       <!-- corpo, compatto e trasparente -->
@@ -927,126 +927,6 @@ function pianificaImu(){
 leggiImu();
 pianificaImu();
 
-/* ══════════ sagoma 3D del ragno ══════════ */
-// Legge le posizioni reali dei 12 servi e le disegna in terza persona.
-// Le zampe sono curve di Bezier: la base (B) fa ruotare la zampa, il ginocchio
-// (M) ne cambia la lunghezza, la punta (E) la allunga e la solleva.
-const ZAMPE_RAGNO = [
-  // lato: +1 zampe sinistre, -1 destre → il ginocchio piega dalla parte giusta
-  { b: 'FLB', m: 'FLM', e: 'FLE', ang: 218, lato: +1 },
-  { b: 'FRB', m: 'FRM', e: 'FRE', ang: 322, lato: -1 },
-  { b: 'HLB', m: 'HLM', e: 'HLE', ang: 142, lato: +1 },
-  { b: 'HRB', m: 'HRM', e: 'HRE', ang: 38,  lato: -1 }
-];
-let percorsiZampe = [];
-let giuntiZampe = [];
-const mostraPosa = {};
-
-function costruisciRagno(){
-  const g = document.getElementById("zampe-ragno");
-  const gj = document.getElementById("giunti-ragno");
-  if (!g || !gj) return;
-  g.innerHTML = "";
-  gj.innerHTML = "";
-  percorsiZampe = [];
-  giuntiZampe = [];
-  ZAMPE_RAGNO.forEach(() => {
-    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    p.setAttribute("class", "zampa");
-    g.appendChild(p);
-    percorsiZampe.push(p);
-
-    const c1 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    c1.setAttribute("class", "giunto");
-    c1.setAttribute("r", "2.2");
-    gj.appendChild(c1);
-
-    const c2 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    c2.setAttribute("class", "giunto");
-    c2.setAttribute("r", "1.9");
-    gj.appendChild(c2);
-
-    giuntiZampe.push([c1, c2]);
-  });
-  disegnaRagno();
-}
-
-function disegnaRagno(){
-  percorsiZampe.forEach((el, i) => {
-    const z = ZAMPE_RAGNO[i];
-    const b = mostraPosa[z.b] ?? 300;
-    const m = mostraPosa[z.m] ?? 300;
-    const e = mostraPosa[z.e] ?? 300;
-    const nb = (b - 300) / 200;
-    const nm = (m - 300) / 200;
-    const ne = (e - 300) / 200;
-
-    // anca: angolo di riposo + rotazione del servo base
-    const a1 = (z.ang + nb * 34) * Math.PI / 180;
-
-    // ginocchio: il servo middle apre/chiude l'angolo tra femore e tibia
-    const piega = (0.88 + nm * 0.32) * z.lato;
-    const a2 = a1 + piega;
-
-    const rAnca = 9;
-    const l1 = 26 * (1 + nm * 0.14);     // femore
-    const l2 = 24 * (1 + ne * 0.20);     // tibia
-
-    const hx = Math.cos(a1) * rAnca;
-    const hy = Math.sin(a1) * rAnca * 0.9;
-    const kx = hx + Math.cos(a1) * l1;
-    const ky = hy + Math.sin(a1) * l1 * 0.9;
-    const tx = kx + Math.cos(a2) * l2;
-    const ty = ky + Math.sin(a2) * l2 * 0.9 - ne * 3;
-
-    el.setAttribute("d",
-      "M" + hx.toFixed(1) + " " + hy.toFixed(1) +
-      " L" + kx.toFixed(1) + " " + ky.toFixed(1) +
-      " L" + tx.toFixed(1) + " " + ty.toFixed(1));
-
-    const g = giuntiZampe[i];
-    if (g){
-      g[0].setAttribute("cx", kx.toFixed(1));
-      g[0].setAttribute("cy", ky.toFixed(1));
-      g[1].setAttribute("cx", tx.toFixed(1));
-      g[1].setAttribute("cy", ty.toFixed(1));
-    }
-  });
-}
-
-async function aggiornaRagno(){
-  try {
-    const r = await fetch("/api/posa", { cache: "no-store" });
-    const d = await r.json();
-    if (!d.ok || !d.servi) return;
-
-    const proprieta = { targets: mostraPosa, duration: 150, easing: "linear",
-                        update: disegnaRagno };
-    ZAMPE_RAGNO.forEach(z => {
-      ["b", "m", "e"].forEach(k => {
-        const nome = z[k];
-        const nuovo = d.servi[nome] ?? 300;
-        if (mostraPosa[nome] === undefined) mostraPosa[nome] = nuovo;
-        proprieta[nome] = [mostraPosa[nome], nuovo];
-      });
-    });
-    anime.remove(mostraPosa);
-    anime(proprieta);
-
-    const scena = document.getElementById("scena-ragno");
-    if (scena){
-      const tilt = 32 - (d.pitch || 0) * 1.0;
-      const giro = (d.roll || 0) * 1.2;
-      scena.style.transform = "rotateX(" + tilt.toFixed(1) + "deg) rotateZ(" +
-                              giro.toFixed(1) + "deg)";
-    }
-  } catch (e) {}
-}
-
-costruisciRagno();
-aggiornaRagno();
-setInterval(aggiornaRagno, 130);
-
 /* ══════════ PWA e schermo sempre acceso ══════════ */
 // Service worker: serve solo a rendere la pagina installabile (non cachea nulla)
 if ("serviceWorker" in navigator) {
@@ -1385,5 +1265,6 @@ anime({ targets: ".overlay-inner > *", translateY:[28,0], scale:[.93,1],
 connetti();
 controllaStato();
 </script>
+<script type="module" src="/js/ragno3d.js"></script>
 </body>
 </html>
