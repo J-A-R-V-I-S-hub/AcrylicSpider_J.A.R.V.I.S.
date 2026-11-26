@@ -49,7 +49,9 @@ function avvia(tela) {
   const renderer = new THREE.WebGLRenderer({
     canvas: tela, alpha: true, antialias: true, powerPreference: 'high-performance'
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const dprMassimo = Math.min(window.devicePixelRatio || 1, 1.6);
+  let dprCorrente = dprMassimo;
+  renderer.setPixelRatio(dprCorrente);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.48;
@@ -64,15 +66,15 @@ function avvia(tela) {
 
   scena.add(new THREE.HemisphereLight(0x9db7ff, 0x2a1c14, 1.02));
 
-  const chiave = new THREE.DirectionalLight(0xf4f8ff, 4.25);
+  const chiave = new THREE.DirectionalLight(0xf4f8ff, 4.5);
   chiave.position.set(-14, 20, 16);
   scena.add(chiave);
 
-  const controluce = new THREE.DirectionalLight(0x5fd2ff, 3.6);
+  const controluce = new THREE.DirectionalLight(0x5fd2ff, 3.9);
   controluce.position.set(15, 12, -16);
   scena.add(controluce);
 
-  const caldo = new THREE.DirectionalLight(0xff6a2a, 1.05);
+  const caldo = new THREE.DirectionalLight(0xff6a2a, 1.2);
   caldo.position.set(18, 5, 10);
   scena.add(caldo);
 
@@ -80,14 +82,14 @@ function avvia(tela) {
   lato.position.set(-16, 8, -6);
   scena.add(lato);
 
-  const frontale = new THREE.DirectionalLight(0xc6dcff, 1.55);
+  const frontale = new THREE.DirectionalLight(0xc6dcff, 1.35);
   frontale.position.set(2, 7, 20);
   scena.add(frontale);
 
   /* ── materiali ─────────────────────────────────────────────────────────── */
   const acrilico = new THREE.MeshPhysicalMaterial({
-    color: 0x0e1016, metalness: 0.45, roughness: 0.13,
-    clearcoat: 1, clearcoatRoughness: 0.05, envMapIntensity: 2.6
+    color: 0x12151c, metalness: 0.42, roughness: 0.13,
+    clearcoat: 1, clearcoatRoughness: 0.05, envMapIntensity: 2.1
   });
   const acrilicoChiaro = new THREE.MeshPhysicalMaterial({
     color: 0x14171d, metalness: 0.40, roughness: 0.18,
@@ -114,7 +116,7 @@ function avvia(tela) {
     color: 0x1e7a48, metalness: 0.15, roughness: 0.50, envMapIntensity: 0.8
   });
   const pcbVerdeScuro = new THREE.MeshStandardMaterial({
-    color: 0x0d3722, metalness: 0.25, roughness: 0.40, envMapIntensity: 1.0
+    color: 0x07170f, metalness: 0.25, roughness: 0.42, envMapIntensity: 0.9
   });
   const pcbBlu = new THREE.MeshStandardMaterial({
     color: 0x15345f, metalness: 0.35, roughness: 0.36, envMapIntensity: 1.2
@@ -156,6 +158,14 @@ function avvia(tela) {
   });
   const batteriaMat = new THREE.MeshStandardMaterial({
     color: 0x101a26, metalness: 0.45, roughness: 0.34, envMapIntensity: 1.2
+  });
+  const etichettaBatteriaMat = new THREE.MeshStandardMaterial({
+    color: 0x3a0c14, metalness: 0.1, roughness: 0.58,
+    emissive: 0x120204, emissiveIntensity: 0.08
+  });
+  const interruttoreMat = new THREE.MeshStandardMaterial({
+    color: 0x6a1010, metalness: 0.2, roughness: 0.42,
+    emissive: 0x1a0303, emissiveIntensity: 0.10
   });
 
   /* ── rig: scena → rig (quota) → inclinazione → scocca ─────────────────── */
@@ -291,14 +301,23 @@ function avvia(tela) {
   }
 
   /* batteria sotto la piastra */
-  const batteria = new THREE.Mesh(new THREE.BoxGeometry(7.2, 1.05, 5.0), batteriaMat);
-  batteria.position.set(0, 0.68, 0.15);
+  const batteria = new THREE.Mesh(new THREE.BoxGeometry(7.0, 1.0, 6.6), batteriaMat);
+  batteria.position.set(0, 0.62, -1.30);
   scocca.add(batteria);
-  const etichettaBatteria = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.24, 0.05), etichetta);
-  etichettaBatteria.position.set(0, 0.72, -2.38);
+  const etichettaBatteria = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.24, 0.05), etichettaBatteriaMat);
+  etichettaBatteria.position.set(0, 0.62, -4.62);
   scocca.add(etichettaBatteria);
-  tavolaCavo([[0.25, 0.95, -2.40], [0.30, 1.55, -3.60], [0.25, 2.05, -4.18]], filoRosso, 0.055, scocca);
-  tavolaCavo([[-0.25, 0.95, -2.40], [-0.30, 1.55, -3.60], [-0.25, 2.05, -4.18]], filoNero, 0.055, scocca);
+  const connettore = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.45, 0.28), chip);
+  connettore.position.set(1.7, 0.58, -4.52);
+  scocca.add(connettore);
+  const poloRosso = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.06), filoRosso);
+  poloRosso.position.set(1.55, 0.62, -4.68);
+  scocca.add(poloRosso);
+  const poloNero = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.06), filoNero);
+  poloNero.position.set(1.90, 0.62, -4.68);
+  scocca.add(poloNero);
+  tavolaCavo([[0.25, 0.80, -4.55], [0.30, 1.45, -4.45], [0.25, 2.05, -4.18]], filoRosso, 0.055, scocca);
+  tavolaCavo([[-0.25, 0.80, -4.55], [-0.30, 1.45, -4.45], [-0.25, 2.05, -4.18]], filoNero, 0.055, scocca);
 
   /* pannello posteriore: alimentazione, interruttore, LED */
   const pannelloRetro = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.25, 0.16), acrilicoChiaro);
@@ -310,7 +329,7 @@ function avvia(tela) {
   const bucoUsbC = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.14, 0.04), chip);
   bucoUsbC.position.set(0, 2.10, -4.52);
   scocca.add(bucoUsbC);
-  const interruttore = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.26, 0.22), etichetta);
+  const interruttore = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.26, 0.22), interruttoreMat);
   interruttore.position.set(-1.05, 2.34, -4.34);
   scocca.add(interruttore);
   const ledRetro = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.08), ledCiano);
@@ -327,30 +346,34 @@ function avvia(tela) {
   const staffa = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.45, 0.38), acrilicoChiaro);
   staffa.position.set(0, 3.57, 4.08);
   scocca.add(staffa);
-  const camPCB = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.8, 0.14), pcbVerdeScuro);
+  const camPCB = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.7, 0.14), pcbVerdeScuro);
   camPCB.position.set(0, 3.57, 4.30);
   scocca.add(camPCB);
-  const barilotto = new THREE.Mesh(new THREE.CylinderGeometry(0.70, 0.76, 0.78, 24), lente);
+  const barilotto = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.84, 0.82, 24), lente);
   barilotto.rotation.x = Math.PI / 2;
   barilotto.position.set(0, 3.57, 4.74);
   scocca.add(barilotto);
-  const paraluce = new THREE.Mesh(new THREE.CylinderGeometry(0.86, 0.92, 0.24, 24), servoScuro);
+  const ledFront = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.10, 0.14), ledCiano);
+  ledFront.position.set(0, 3.08, 4.19);
+  scocca.add(ledFront);
+
+  const paraluce = new THREE.Mesh(new THREE.CylinderGeometry(0.96, 1.02, 0.24, 24), servoScuro);
   paraluce.rotation.x = Math.PI / 2;
   paraluce.position.set(0, 3.57, 5.02);
   scocca.add(paraluce);
-  const ghiera = new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.10, 10, 30), alluminio);
+  const ghiera = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.10, 10, 30), alluminio);
   ghiera.position.set(0, 3.57, 5.14);
   scocca.add(ghiera);
-  const lenteVetro = new THREE.Mesh(new THREE.CircleGeometry(0.56, 28), vetro);
+  const lenteVetro = new THREE.Mesh(new THREE.CircleGeometry(0.62, 28), vetro);
   lenteVetro.position.set(0, 3.57, 5.15);
   scocca.add(lenteVetro);
-  const iride = new THREE.Mesh(new THREE.CircleGeometry(0.20, 20), ledCiano);
+  const iride = new THREE.Mesh(new THREE.CircleGeometry(0.28, 20), ledCiano);
   iride.position.set(0, 3.57, 5.17);
   scocca.add(iride);
-  const anello = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.035, 8, 28), ledCiano);
+  const anello = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.040, 8, 28), ledCiano);
   anello.position.set(0, 3.57, 5.18);
   scocca.add(anello);
-  const flash = spriteLuce(0x9fe8ff, 2.0);
+  const flash = spriteLuce(0x9fe8ff, 2.3);
   flash.position.set(0.26, 3.76, 5.22);
   scocca.add(flash);
 
@@ -439,7 +462,7 @@ function avvia(tela) {
     for (const dz of [-0.52, 0.52]) {
       const lastra = meshConBordi(placca(formaFemore(), 0.22), acrilico, 0xffd0a6, 0.19);
       lastra.position.z = dz;
-      lastra.scale.y = 1.32;
+      lastra.scale.y = 1.45;
       femore.add(lastra);
     }
 
@@ -448,10 +471,10 @@ function avvia(tela) {
     vite(femore, 4.55, 0.10, 0.62, 0.55);
     vite(femore, 6.75, 0.02, 0.62);
 
-    const servoM = gruppoServo(1.15, 0.86, 0, 0.62);
+    const servoM = gruppoServo(1.15, 1.04, 0, 0.62);
     femore.add(servoM);
 
-    const cavoM = tavolaCavo([[1.5, 1.12, 0.42], [0.9, 0.55, 0.95], [0.25, 0.15, 0.9]], filoArancio, 0.048, femore);
+    const cavoM = tavolaCavo([[1.5, 1.30, 0.42], [0.9, 0.65, 0.95], [0.25, 0.15, 0.9]], filoArancio, 0.048, femore);
 
     const tibia = new THREE.Group();
     tibia.position.x = L1;
@@ -464,17 +487,17 @@ function avvia(tela) {
     for (const dz of [-0.48, 0.48]) {
       const lastra = meshConBordi(placca(formaTibia(), 0.24), acrilico, 0xffd0a6, 0.19);
       lastra.position.z = dz;
-      lastra.scale.y = 1.26;
+      lastra.scale.y = 1.40;
       tibia.add(lastra);
     }
 
     for (let i = 0; i < 6; i++) vite(tibia, 1.0 + i * 1.25, 0.0, 0.58); 
     vite(tibia, 8.9, 0.02, 0.58);
 
-    const servoE = gruppoServo(1.10, 0.86, 0, 0.58);
+    const servoE = gruppoServo(1.10, 1.02, 0, 0.58);
     tibia.add(servoE);
 
-    const cavoE = tavolaCavo([[1.45, 1.10, 0.4], [2.5, 0.6, 0.95], [1.0, 0.2, 0.9]], filoNero, 0.045, tibia);
+    const cavoE = tavolaCavo([[1.45, 1.28, 0.4], [2.5, 0.7, 0.95], [1.0, 0.2, 0.9]], filoNero, 0.045, tibia);
 
     const piedeGruppo = new THREE.Group();
     piedeGruppo.position.x = 9.5;
@@ -490,11 +513,6 @@ function avvia(tela) {
     gommino.rotation.z = -0.18;
     piedeGruppo.add(gommino);
 
-    /* punta arrotondata: si vede anche quando il piede è di taglio */
-    const punta = new THREE.Mesh(new THREE.CapsuleGeometry(0.33, 0.34, 4, 10), piede);
-    punta.rotation.x = Math.PI / 2;
-    punta.position.set(1.70, -1.72, 0);
-    piedeGruppo.add(punta);
 
     /* punto di contatto, serve per l'ombra e per la quota */
     const contatto = new THREE.Object3D();
@@ -528,8 +546,18 @@ function avvia(tela) {
   anelloPista.rotation.x = -Math.PI / 2;
   anelloPista.position.y = 0.016;
   pista.add(anelloPista);
+  const discoPista = new THREE.Mesh(
+    new THREE.PlaneGeometry(23.2, 23.2),
+    new THREE.MeshBasicMaterial({
+      map: texturePista(), transparent: true, opacity: 0.56,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    })
+  );
+  discoPista.rotation.x = -Math.PI / 2;
+  discoPista.position.y = 0.006;
+  scena.add(discoPista);
   const matTacca = new THREE.MeshBasicMaterial({
-    color: 0xff8a4c, transparent: true, opacity: 0.20, depthWrite: false
+    color: 0xff8a4c, transparent: true, opacity: 0.26, depthWrite: false
   });
   for (let i = 0; i < 12; i++) {
     const ang = (i * Math.PI) / 6;
@@ -574,7 +602,7 @@ function avvia(tela) {
   const puntatori = new Map();
 
   /* luce che segue la camera: il lato che guardi resta leggibile */
-  const riempimento = new THREE.DirectionalLight(0xbfd6ff, 1.05);
+  const riempimento = new THREE.DirectionalLight(0xbfd6ff, 1.15);
   riempimento.target.position.copy(bersaglio);
   scena.add(riempimento);
   scena.add(riempimento.target);
@@ -761,8 +789,11 @@ function avvia(tela) {
   let quota = null;
   let ultimo = performance.now();
   let tempo = 0;
+  let fpsCampione = 0;
+  let fpsFrames = 0;
 
   function aggiorna(dt, adesso) {
+    tempo = adesso / 1000;
     const k = 1 - Math.exp(-dt * 12);
     for (const nome in servo) servo[nome] += (obiettivo[nome] - servo[nome]) * k;
     assetto.pitch += (assettoObiettivo.pitch - assetto.pitch) * k;
@@ -812,13 +843,12 @@ function avvia(tela) {
 
     if (quota === null) quota = -piedePiuBasso;
     else quota += (-piedePiuBasso - quota) * (1 - Math.exp(-dt * 13));
-    rig.position.y = quota;
+    rig.position.y = quota + Math.sin(tempo * 1.6) * 0.022;
 
     inclina.rotation.x = -assetto.pitch * 0.80 * D;
     inclina.rotation.z = assetto.roll * 0.80 * D;
 
     /* respiro leggerissimo del gruppo led, per non farlo sembrare un fermo */
-    tempo = adesso / 1000;
     const pulsazione = 0.75 + Math.sin(tempo * 2.1) * 0.25;
     ledCiano.emissiveIntensity = 1.4 + pulsazione * 1.2;
     ledRosso.emissiveIntensity = 1.15 + pulsazione * 0.8;
@@ -846,6 +876,20 @@ function avvia(tela) {
     ultimo = adesso;
     if (document.hidden) return;
     aggiorna(dt, adesso);
+
+    /* qualità adattiva: se il telefono fatica, abbassa solo la risoluzione 3D */
+    fpsCampione += dt;
+    fpsFrames++;
+    if (adesso > 8000 && fpsCampione > 2.5) {
+      const fps = fpsFrames / fpsCampione;
+      if (fps < 26 && dprCorrente > 1.0) {
+        dprCorrente = Math.max(1.0, dprCorrente - 0.3);
+        renderer.setPixelRatio(dprCorrente);
+        dimensiona();
+      }
+      fpsCampione = 0;
+      fpsFrames = 0;
+    }
 
     /* camera: inerzia, rientro morbido, ritorno automatico in terza persona */
     if (!trascinando) {
@@ -1089,6 +1133,21 @@ function avvia(tela) {
     return tex;
   }
 
+  function texturePista() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const ctx = c.getContext('2d');
+    const grad = ctx.createRadialGradient(128, 128, 8, 128, 128, 126);
+    grad.addColorStop(0, 'rgba(140,230,255,0.34)');
+    grad.addColorStop(0.55, 'rgba(90,190,255,0.10)');
+    grad.addColorStop(1, 'rgba(60,160,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 256);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
   function spriteLuce(colore, dimensione) {
     const c = document.createElement('canvas');
     c.width = c.height = 64;
@@ -1129,9 +1188,9 @@ function avvia(tela) {
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, 1024, 512);
     }
-    alone(512, 60, 340, 'rgba(255,255,255,0.72)');
+    alone(512, 60, 340, 'rgba(255,255,255,0.86)');
     alone(210, 160, 230, 'rgba(255,196,150,0.38)');
-    alone(820, 190, 250, 'rgba(110,215,255,0.72)');
+    alone(820, 190, 250, 'rgba(110,215,255,0.55)');
     alone(620, 430, 190, 'rgba(255,110,50,0.34)');
     alone(80, 390, 180, 'rgba(120,160,255,0.24)');
 
